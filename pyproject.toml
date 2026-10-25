@@ -1,0 +1,21 @@
+[project]
+name = "garmin-sync"
+version = "0.1.0"
+description = "Daily download of your own Garmin Personal API data into JSON files in git"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["garmin-connect-personal-api-python>=1,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+analysis = ["duckdb>=1,<2"]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["garmin_sync"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

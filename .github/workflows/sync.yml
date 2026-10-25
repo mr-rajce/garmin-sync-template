@@ -1,0 +1,70 @@
+name: Garmin sync
+
+on:
+  schedule:
+    - cron: "17 4 * * *" # 04:17 UTC = 05:17 CET / 06:17 CEST
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "How many days back to download (first fill: e.g. 365)"
+        default: "7"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # The public template itself has no key; only copies made from it sync.
+    if: github.repository != 'mr-rajce/garmin-sync-template'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GARMIN_TZ: ${{ vars.GARMIN_TZ || 'Europe/Prague' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e '.[dev]'
+
+      - run: python -m pytest -q
+
+      - name: Download data from Garmin
+        env:
+          GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+          GARMIN_KEY_EXPIRES: ${{ vars.GARMIN_KEY_EXPIRES }}
+          DAYS: ${{ inputs.days }}
+        run: python -m garmin_sync.sync --days "${DAYS:-7}"
+
+      # Yesterday and the day before vs. the 28-day median; an entry in reports/daily/ on a deviation.
+      - name: Daily check
+        if: always()
+        run: python -m garmin_sync.check
+
+      # Charts from whatever is in data/, even if the sync partly failed.
+      - name: Dashboard
+        if: always()
+        run: python -m garmin_sync.dashboard
+
+      # Save what was downloaded even after a partial failure.
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "garmin-sync[bot]"
+          git config user.email "garmin-sync@users.noreply.github.com"
+          git add data reports
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          git commit -q -m "data: sync $(TZ="$GARMIN_TZ" date +%F)"
+          # Another commit may have landed on main meanwhile (re-run, manual push).
+          # On a data conflict this run's newer state wins.
+          git pull -q --rebase -X theirs
+          git push
