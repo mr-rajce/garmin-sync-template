@@ -16,6 +16,7 @@ from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo
 
+from . import journal as journal_mod
 from . import store
 from .dashboard import BASELINE_DAYS, METRICS, ROOT, Metric, baseline, fmt, load_series
 
@@ -67,7 +68,15 @@ def _day(d: date) -> str:
     return d.isoformat()
 
 
-def findings(data_dir: Path, today: date) -> list[str]:
+def journal_note(journal: journal_mod.Journal | None, days: list[date]) -> str:
+    """" Journal: 2030-10-23 alcohol, party." for days with tags, otherwise an empty string."""
+    if journal is None:
+        return ""
+    parts = [f"{_day(d)} {', '.join(tags)}" for d in days if (tags := journal.tags(d))]
+    return f" Journal: {'; '.join(parts)}." if parts else ""
+
+
+def findings(data_dir: Path, today: date, journal: journal_mod.Journal | None = None) -> list[str]:
     """Lines for clear deviations lasting 2 days and for missing data."""
     yesterday, before = today - timedelta(days=1), today - timedelta(days=2)
     load_start = before - timedelta(days=BASELINE_DAYS)
@@ -79,7 +88,9 @@ def findings(data_dir: Path, today: date) -> list[str]:
         series = load_series(data_dir, metric, load_start, yesterday)
         a, b = deviation(series, before, rule), deviation(series, yesterday, rule)
         if a and b:
-            out.append(_line(metric, rule, before, a, yesterday, b))
+            # The day before each night too: evening alcohol shows up only in the night.
+            days = [before - timedelta(days=1), before, yesterday]
+            out.append(_line(metric, rule, before, a, yesterday, b) + journal_note(journal, days))
     latest = _latest_day(data_dir)
     if latest is None or (today - latest).days > STALE_DAYS:
         since = f"since {_day(latest)}" if latest else "at all"
@@ -124,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reports-dir", type=Path, default=ROOT / "reports")
     args = parser.parse_args(argv)
     today = datetime.now(ZoneInfo(os.environ.get("GARMIN_TZ", "Europe/Prague"))).date()
-    lines = findings(args.data_dir, today)
+    lines = findings(args.data_dir, today, journal_mod.load(ROOT / "journal"))
     if not lines:
         print("No deviations")
         return 0

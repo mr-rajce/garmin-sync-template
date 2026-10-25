@@ -85,3 +85,17 @@ def test_trend_chart_and_section(tmp_path: Path):
     assert "Weeks with data: 9 of 52." in md  # 2030-08-26 (Mon) – 2030-10-24 (Thu): 9 weeks
     svg = (reports / "charts/hrv_trend.svg").read_text(encoding="utf-8")
     assert svg.count("<circle") == 9
+
+
+def test_journal_section(tmp_path: Path):
+    from garmin_sync import journal
+
+    j = journal.Journal(
+        entries={YESTERDAY: journal.Entry(["alcohol"], "party")},
+        periods=[journal.Period(YESTERDAY - timedelta(days=3), None, "illness", "cold")],
+    )
+    md = dashboard.build(tmp_path / "data", tmp_path / "reports", TODAY, j)
+    assert "- **illness** 2030-10-21 – ongoing: cold" in md
+    assert "- 2030-10-24 *alcohol*: party" in md
+    assert md.index("## Journal, last") < md.index("## Activities in the last")
+    assert "No entries." in dashboard.build(tmp_path / "data", tmp_path / "reports", TODAY)

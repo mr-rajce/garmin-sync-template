@@ -27,6 +27,17 @@ duckdb.sql("""
 """).show()
 ```
 
+## Journal (the owner's context)
+
+The repo is also a journal: the watch data shows *what* happened, the journal *why*. It lives in `journal/` (read by `garmin_sync/journal.py`):
+
+- `journal/<YYYY-MM>.md`: a day entry = heading `## YYYY-MM-DD`, a line `tags: a, b` and free text (time, how much, how they felt).
+- `journal/periods.md`: table `| from | to | tag | note |` for states lasting several days (illness, injury, travel, holiday, medication). Empty "to" = ongoing.
+- Suggested tags (lowercase, hyphenated): `alcohol`, `party`, `late-meal`, `caffeine-evening`, `stress`, `illness`, `injury`, `medication`, `travel`, `holiday`, `sauna`, `outdoors`. Custom tags are fine, but prefer these where they fit.
+- **When the owner says "add to my journal…"**: write it exactly as they said it into the right month file (or `periods.md`), with tags from this list, commit and push to main. Do not embellish; if the date does not match the watch data, write their version and mention the mismatch separately.
+- When evaluating: a tag explains, it does not excuse. Still report the deviation with numbers and add the tag. An evening event shows up in the night and the next morning.
+- The journal is as sensitive as the data (illness, medication): section Privacy applies.
+
 ## How to evaluate
 
 - **Compare with the owner's own baseline, not population norms:** the default baseline is the median of the 28 days before the evaluated period.
@@ -51,6 +62,7 @@ Only when the owner asks for it (e.g. "include the HRV analysis" in the routine 
 
 - Take the last 28 nights (`data/hrv`, field `lastNightAvg`). Compare the quarter of nights with the highest HRV against the quarter with the lowest.
 - For each night look at the day and night before: sleep duration and bedtime (`data/sleep`), average stress and Body Battery (`data/daily_summary`), steps, activities and their timing (`data/activities`, training after 18:00 separately), and work load if the calendar is available (section Optional: calendar).
+- For each night also list the journal tags of that day and the day before (section Journal). When a tag has at least 3 nights, compare HRV after nights with and without it.
 - Report only differences that are visible between the groups, with numbers (e.g. "nights with HRV above 60 ms: median sleep 7.6 h; below 45 ms: 5.9 h"). With few nights, say it is only a hint.
 - From that, at most 2 concrete things to try next week, derived only from the owner's data, no generic advice.
 - Check whether the things suggested in the previous summary (previous file in `reports/`) showed up: compare last week's HRV with the median of the 4 weeks before.

@@ -17,6 +17,7 @@ from statistics import median
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from . import journal as journal_mod
 from . import store
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -206,7 +207,23 @@ def recent_activities(data_dir: Path, start: date, end: date) -> list[dict[str, 
     return out[:MAX_ACTIVITIES]
 
 
-def build(data_dir: Path, reports_dir: Path, today: date) -> str:
+def journal_section(journal: journal_mod.Journal, start: date, end: date) -> list[str]:
+    """Journal for the period: entries per day and periods overlapping it."""
+    lines = [f"## Journal, last {RECENT_ACTIVITY_DAYS} days", ""]
+    periods = [p for p in journal.periods if p.start <= end and (p.end is None or p.end >= start)]
+    for p in periods:
+        until = p.end.isoformat() if p.end else "ongoing"
+        lines.append(f"- **{p.tag}** {p.start.isoformat()} – {until}" + (f": {p.note}" if p.note else ""))
+    for day in sorted(d for d in journal.entries if start <= d <= end):
+        entry = journal.entries[day]
+        tags = f" *{', '.join(entry.tags)}*" if entry.tags else ""
+        lines.append(f"- {day.isoformat()}{tags}" + (f": {entry.text}" if entry.text else ""))
+    if len(lines) == 2:
+        lines.append("No entries. Write to `journal/` (see CLAUDE.md, section Journal).")
+    return lines + [""]
+
+
+def build(data_dir: Path, reports_dir: Path, today: date, journal: journal_mod.Journal | None = None) -> str:
     """Write charts to reports/charts/ and return the dashboard markdown."""
     yesterday = today - timedelta(days=1)
     chart_start = yesterday - timedelta(days=CHART_DAYS - 1)
@@ -284,9 +301,9 @@ def build(data_dir: Path, reports_dir: Path, today: date) -> str:
         "Shows the long-term trend that daily values hide.",
         "",
         *trends,
-        f"## Activities in the last {RECENT_ACTIVITY_DAYS} days",
-        "",
     ]
+    lines += journal_section(journal or journal_mod.Journal(), yesterday - timedelta(days=RECENT_ACTIVITY_DAYS - 1), today)
+    lines += [f"## Activities in the last {RECENT_ACTIVITY_DAYS} days", ""]
     activities = recent_activities(data_dir, yesterday - timedelta(days=RECENT_ACTIVITY_DAYS - 1), today)
     if activities:
         lines += ["| Date | Type | Name | Duration | Distance |", "|---|---|---|---:|---:|"]
@@ -306,7 +323,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reports-dir", type=Path, default=ROOT / "reports")
     args = parser.parse_args(argv)
     today = datetime.now(ZoneInfo(os.environ.get("GARMIN_TZ", "Europe/Prague"))).date()
-    markdown = build(args.data_dir, args.reports_dir, today)
+    markdown = build(args.data_dir, args.reports_dir, today, journal_mod.load(ROOT / "journal"))
     changed = store.write_if_changed_text(args.reports_dir / "dashboard.md", markdown)
     print(f"reports/dashboard.md {'updated' if changed else 'unchanged'}")
     return 0

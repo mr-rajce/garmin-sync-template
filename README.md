@@ -48,6 +48,10 @@ Garmin Personal API ──(GitHub Action every morning, last 7 days)──► da
 - **Rate limit:** Garmin allows about 100 requests per minute. The sync pauses 0.65 s between requests and, on HTTP 429, waits as long as Garmin says.
 - **Calories eaten:** Garmin only has them if you log food in Garmin Connect. The `food_logs` shape with real entries has not been verified yet; if the sync reports an unknown shape, the data is not saved wrongly, it is reported.
 
+## Journal
+
+`journal/` holds your context for the data: party, alcohol, illness, injury, travel. A day entry goes to `journal/<YYYY-MM>.md` (`## YYYY-MM-DD`, `tags: …`, text), longer states to `journal/periods.md`. Easiest: tell Claude "add to my journal: …". Format and tags: `CLAUDE.md`. The daily check and the dashboard show the tags; the optional HRV analysis compares nights with and without them.
+
 ## Dashboard
 
 [`reports/dashboard.md`](reports/dashboard.md): yesterday's values against your own 28-day median, 90-day charts (sleep score and duration, HRV, resting heart rate, Body Battery, stress, steps), a one-year trend of weekly medians (HRV, resting heart rate, sleep score and duration) and recent activities. It is regenerated after every sync from the data in the repo; nothing is sent anywhere. GitHub renders it on the web and in the mobile app.
