@@ -65,6 +65,35 @@
 
   <section id="metrics" class="gd-grid"></section>
 
+  <section class="gd-card" id="periods">
+    <div class="gd-card-head">
+      <h2 class="gd-card-title">Weeks and months</h2>
+      <div class="gd-seg" role="group" aria-label="Aggregation">
+        <button type="button" id="agg-week" data-kind="week" aria-pressed="true">Weeks</button>
+        <button type="button" id="agg-month" data-kind="month" aria-pressed="false">Months</button>
+      </div>
+    </div>
+    <p class="gd-note">Median per week (Monday–Sunday) or calendar month. Bars: HRV. The last period is usually incomplete; the table shows how many days had data.</p>
+    <div class="gd-chart" id="chart-periods" data-source="periods"></div>
+    <div class="gd-tablewrap">
+      <table class="gd-table" id="table-periods" data-source="periods" data-row-key="kind,period">
+        <thead><tr>
+          <th data-field="period">Period</th>
+          <th class="num" data-field="hrv">HRV</th>
+          <th class="num" data-field="sleep_score">Sleep score</th>
+          <th class="num" data-field="sleep_hours">Sleep h</th>
+          <th class="num" data-field="resting_hr">Resting HR</th>
+          <th class="num" data-field="body_battery">BB max</th>
+          <th class="num" data-field="stress">Stress</th>
+          <th class="num" data-field="steps">Steps</th>
+          <th class="num" data-field="days">Days</th>
+          <th data-field="tags">Journal</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="gd-card" id="day">
     <div class="gd-card-head">
       <h2 class="gd-card-title">Course of the day</h2>
@@ -150,6 +179,47 @@ dash.calc('latest', {
       const value = round(last[k], d);
       const median = round(base[k], d);
       return { metric: k, date: last.date, value, median, diff: value != null && median != null ? round(value - median, d) : null };
+    });
+  },
+});
+
+// ISO weeks (Monday–Sunday) and calendar months: median of each metric, days with data, tags.
+dash.calc('periods', {
+  title: 'Weeks and months',
+  description: 'Median of each metric per ISO week and per calendar month, days with data and how often each journal tag appeared.',
+  inputs: ['daily'],
+  fn: (daily) => {
+    const keys = [['hrv', 0], ['sleep_score', 0], ['sleep_hours', 1], ['resting_hr', 0], ['body_battery', 0], ['stress', 0], ['steps', 0]];
+    const median = (xs) => { const s = [...xs].sort((a, b) => a - b); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+    const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
+    const isoWeek = (iso) => {
+      const d = new Date(iso + 'T00:00:00Z');
+      const day = (d.getUTCDay() + 6) % 7;
+      d.setUTCDate(d.getUTCDate() - day + 3);
+      const year = d.getUTCFullYear();
+      const jan4 = new Date(Date.UTC(year, 0, 4));
+      const week = 1 + Math.round(((d - jan4) / 864e5 - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
+      return `${year}-W${String(week).padStart(2, '0')}`;
+    };
+    const groups = new Map();
+    for (const row of daily) {
+      for (const [kind, period] of [['week', isoWeek(row.date)], ['month', row.date.slice(0, 7)]]) {
+        const id = `${kind}|${period}`;
+        if (!groups.has(id)) groups.set(id, { kind, period, rows: [] });
+        groups.get(id).rows.push(row);
+      }
+    }
+    return [...groups.values()].map(({ kind, period, rows }) => {
+      const out = { kind, period, from: rows[0].date, to: rows[rows.length - 1].date };
+      for (const [k, d] of keys) {
+        const vals = rows.map((r) => r[k]).filter((v) => v != null);
+        out[k] = vals.length ? round(median(vals), d) : null;
+      }
+      out.days = rows.filter((r) => keys.some(([k]) => r[k] != null)).length;
+      const counts = new Map();
+      for (const r of rows) for (const t of (r.tags ? r.tags.split(', ') : [])) counts.set(t, (counts.get(t) || 0) + 1);
+      out.tags = [...counts].map(([t, n]) => (n > 1 ? `${t} ×${n}` : t)).join(', ');
+      return out;
     });
   },
 });
@@ -315,7 +385,7 @@ window.GD.lineChart = (el, metric, opts) => {
     grid.appendChild(card);
   }
   const hrv = METRICS.find((m) => m.key === 'hrv');
-  const buttons = document.querySelectorAll('.gd-seg button');
+  const buttons = document.querySelectorAll('#hrv .gd-seg button');
   buttons.forEach((b) => b.addEventListener('click', () => {
     state.days = Number(b.dataset.days);
     buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
@@ -447,6 +517,99 @@ window.GD.lineChart = (el, metric, opts) => {
     dayChart(bbEl, rows.filter((r) => r.metric === 'body_battery'), dayActs, { label: 'Body Battery', unit: '', color: dash.colors[1], gapMinutes: 60, domain: [0, 100], empty: 'No Body Battery for this day' });
   };
   dash.onData(() => window.GD.drawDay());
+})();
+</script>
+
+<script>
+(() => {
+  const { fmt, parseDay } = window.GD;
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const SHOW = { week: 26, month: 12 };
+  let kind = 'week';
+  const label = (r) => {
+    const d = parseDay(r.from);
+    return r.kind === 'week' ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}` : `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
+  };
+  const buttons = document.querySelectorAll('#periods .gd-seg button');
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    kind = b.dataset.kind;
+    buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+    draw();
+  }));
+  const chartEl = document.getElementById('chart-periods');
+  const body = document.querySelector('#table-periods tbody');
+
+  const drawChart = (rows) => {
+    chartEl.replaceChildren();
+    const pts = rows.slice(-SHOW[kind]);
+    if (!pts.some((r) => r.hrv != null)) {
+      const e = document.createElement('div'); e.className = 'gd-empty'; e.textContent = 'No data for this period'; chartEl.appendChild(e);
+      return;
+    }
+    const width = chartEl.clientWidth || 600;
+    const height = 180;
+    const y = d3.scaleLinear([0, d3.max(pts, (r) => r.hrv) * 1.1], [height - 24, 14]).nice(4);
+    const svg = d3.select(chartEl).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${width} ${height}`).attr('height', height);
+    const ticks = y.ticks(4);
+    const probe = svg.append('text').attr('font-size', 11).text(fmt(ticks[ticks.length - 1]));
+    const left = Math.ceil(probe.node().getComputedTextLength()) + 10;
+    probe.remove();
+    const x = d3.scaleBand(pts.map((r) => r.period), [left, width - 8]).padding(0.25);
+    for (const t of ticks) {
+      svg.append('line').attr('x1', left).attr('x2', width - 8).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
+      svg.append('text').attr('x', left - 6).attr('y', y(t) + 4).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(fmt(t));
+    }
+    const every = Math.max(1, Math.ceil(pts.length / Math.max(1, Math.floor((width - left) / 48))));
+    pts.forEach((r, i) => {
+      if (i % every) return;
+      svg.append('text').attr('x', x(r.period) + x.bandwidth() / 2).attr('y', height - 6).attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(label(r));
+    });
+    svg.append('g').selectAll('rect').data(pts.filter((r) => r.hrv != null)).join('rect')
+      .attr('x', (r) => x(r.period)).attr('width', x.bandwidth()).attr('y', (r) => y(r.hrv)).attr('height', (r) => y(0) - y(r.hrv))
+      .attr('rx', 4).attr('fill', dash.colors[0]);
+    svg.append('g').selectAll('circle').data(pts.filter((r) => r.tags)).join('circle')
+      .attr('cx', (r) => x(r.period) + x.bandwidth() / 2).attr('cy', 6).attr('r', 3).attr('fill', 'var(--cds-chart-status-critical)');
+    const tip = document.createElement('div');
+    tip.className = 'gd-tip';
+    tip.hidden = true;
+    chartEl.appendChild(tip);
+    svg.append('g').selectAll('rect').data(pts).join('rect')
+      .attr('x', (r) => x(r.period)).attr('width', x.bandwidth()).attr('y', 0).attr('height', height - 24).attr('fill', 'transparent')
+      .on('mousemove', (event, r) => {
+        tip.replaceChildren();
+        const d = document.createElement('div'); d.className = 'gd-tip-date'; d.textContent = `${r.period} (${r.from} – ${r.to})`; tip.appendChild(d);
+        const v = document.createElement('div'); v.textContent = `HRV median: ${fmt(r.hrv)} ms · days with data: ${r.days}`; tip.appendChild(v);
+        if (r.tags) { const t = document.createElement('div'); t.textContent = `Journal: ${r.tags}`; tip.appendChild(t); }
+        tip.hidden = false;
+        const px = (x(r.period) + x.bandwidth()) * (chartEl.clientWidth / width);
+        tip.style.left = `${Math.min(Math.max(0, px + 6), chartEl.clientWidth - tip.offsetWidth)}px`;
+        tip.style.top = '0px';
+      })
+      .on('mouseleave', () => { tip.hidden = true; });
+  };
+
+  const draw = () => {
+    const res = dash.data('periods');
+    body.replaceChildren();
+    if (res.status !== 'ok') {
+      chartEl.replaceChildren();
+      if (res.status === 'error') { const e = document.createElement('div'); e.className = 'gd-empty'; e.textContent = 'Failed to load'; chartEl.appendChild(e); }
+      else chartEl.classList.add('dash-skeleton');
+      return;
+    }
+    chartEl.classList.remove('dash-skeleton');
+    const rows = res.data.filter((r) => r.kind === kind).sort((a, b) => a.period.localeCompare(b.period));
+    drawChart(rows);
+    for (const r of [...rows].reverse()) {
+      const tr = document.createElement('tr');
+      tr.dataset.key = `${r.kind},${r.period}`;
+      tr.title = `${r.from} – ${r.to}`;
+      const cells = [r.period, fmt(r.hrv), fmt(r.sleep_score), fmt(r.sleep_hours, 1), fmt(r.resting_hr), fmt(r.body_battery), fmt(r.stress), fmt(r.steps), String(r.days), r.tags || ''];
+      cells.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i >= 1 && i <= 8) td.className = 'num'; tr.appendChild(td); });
+      body.appendChild(tr);
+    }
+  };
+  dash.onData(draw);
 })();
 </script>
 

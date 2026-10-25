@@ -104,6 +104,25 @@ When on, it is the only exception to section Privacy: a **private** Claude artif
 - only **daily summaries, the course of the day and journal tags**; never raw files, journal text, GPS or activity names;
 - the artifact stays private: **never share or publish it**; update the same one (same URL) and note its URL here.
 
+Artifact URL: (none yet)
+
+**Build it** (once, when the owner asks "build my Garmin dashboard artifact" and the exception is on):
+
+1. `python -m garmin_sync.export --out <scratch folder>`: writes `daily.json` (one year), `activities.json` and `intraday.json` (last 60 days). Never upload anything else.
+2. Create an artifact from the **Dashboard** artifact type (Artifact tool, `action: "quickstart"`, then publish with the Dashboard `type_url`), titled "Garmin journal". Follow the type's own instructions for the details below.
+3. Upload the three files as assets of that artifact.
+4. In its store write `dash/meta` `{title}`, and three file datasets with exactly these ids, since the page reads them: `datasets/daily`, `datasets/activities`, `datasets/intraday` (`source: {kind: "file", url, name}`, `updated: {at, by}`, a `title` and `description` each).
+5. Write the page: `files/index.html` = the content of `artifact/index.html` from this repo, unchanged.
+6. Write the artifact's URL into "Artifact URL" above, commit and push.
+
+**Refresh it** (only when the owner asks, e.g. "refresh my dashboard artifact"):
+
+1. Run the export again; upload only the files whose content changed.
+2. Update the matching `datasets/<id>` documents (`source.url`, `source.name`, `updated`). Leave `files/index.html` alone unless the owner asks for a page change.
+3. Delete the old asset once nothing refers to it.
+
+The page shows: yesterday against the 28-day median, overnight HRV (90 days or a year) with journal tags, the other metrics as small charts, weeks and months (medians, days with data, tags), the course of a chosen day (heart rate and Body Battery with activities), and activities of the last 30 days.
+
 ## Development
 
 - `pip install -e '.[dev]' && pytest` must pass before every push.

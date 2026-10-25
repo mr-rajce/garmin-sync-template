@@ -66,7 +66,7 @@ After every sync, `garmin_sync/check.py` compares yesterday and the day before w
 
 ## Optional: dashboard in a Claude artifact
 
-The repo dashboard keeps your data on GitHub only. If you want an interactive version (hover values, zoom, journal tags on the charts, the course of any day), you can have Claude build a **private** Claude artifact from `artifact/index.html`. It needs a copy of your data on claude.ai, so it is **off by default**: turn it on by adding the exception in `CLAUDE.md` (section Optional: artifact) yourself, then ask Claude "build my Garmin dashboard artifact". `python -m garmin_sync.export --out <folder>` writes only daily summaries, the course of the day and journal tags (never raw files, journal text, GPS or activity names).
+The repo dashboard keeps your data on GitHub only. If you want an interactive version (hover values, zoom, journal tags on the charts, the course of any day), you can have Claude build a **private** Claude artifact from `artifact/index.html`. It needs a copy of your data on claude.ai, so it is **off by default**: turn it on by adding the exception in `CLAUDE.md` (section Optional: artifact) yourself, then ask Claude "build my Garmin dashboard artifact". The exact build and refresh steps Claude follows are in `CLAUDE.md`; the page also shows weekly and monthly medians and the course of any of the last 60 days. Refreshing is on request: "refresh my dashboard artifact". `python -m garmin_sync.export --out <folder>` writes only daily summaries, the course of the day and journal tags (never raw files, journal text, GPS or activity names).
 
 ## Agents (optional)
 
