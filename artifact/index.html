@@ -1,0 +1,477 @@
+<style>
+.gd { display: grid; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); font-variant-numeric: tabular-nums; }
+.gd-head { display: grid; gap: var(--cds-gap-xs); }
+.gd-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.gd-lede { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-body); max-width: 70ch; }
+.gd-section-title { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.gd-tiles { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
+.gd-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: grid; gap: var(--cds-gap-xs); align-content: start; }
+.gd-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.gd-tile-value { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.1; min-height: 1.1em; }
+.gd-tile-unit { font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-left: 0.25em; }
+.gd-tile-diff { font-size: var(--cds-font-size-caption); min-height: 1.2em; }
+.gd-tile-diff.is-good { color: var(--color-ok); }
+.gd-tile-diff.is-bad { color: var(--color-bad); }
+.gd-tile-base { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.gd-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; }
+.gd-card-head { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: baseline; justify-content: space-between; }
+.gd-card-title { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+.gd-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; }
+.gd-grid { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+.gd-chart { position: relative; min-height: 180px; }
+.gd-chart.is-main { min-height: 260px; }
+.gd-chart.is-day { min-height: 200px; }
+.gd-chart svg { display: block; overflow: visible; }
+.gd-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.gd-seg button, .gd-daynav button { font: inherit; font-size: var(--cds-font-size-caption); background: transparent; color: var(--color-fg); border: 0; padding: var(--cds-pad-xs) var(--cds-pad-sm); cursor: pointer; }
+.gd-seg button[aria-pressed="true"] { background: var(--color-border-line); }
+.gd-seg button:focus-visible, .gd-daynav button:focus-visible, .gd-daynav input:focus-visible { outline: 2px solid var(--color-fg); outline-offset: -2px; }
+.gd-daynav { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); align-items: center; }
+.gd-daynav input { font: inherit; font-size: var(--cds-font-size-caption); color: var(--color-fg); background: transparent; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); }
+.gd-daynav button { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.gd-daytags { font-size: var(--cds-font-size-caption); min-height: 1.2em; }
+.gd-chip { display: inline-block; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 0 0.6em; margin-right: 0.35em; }
+.gd-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; }
+.gd-tip-date { color: var(--cds-text-secondary); }
+.gd-tablewrap { max-height: 22rem; overflow: auto; }
+.gd-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); }
+.gd-table th, .gd-table td { text-align: left; padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); }
+.gd-table th { position: sticky; top: 0; background: var(--color-panel); font-weight: var(--cds-font-weight-medium); }
+.gd-table td.num, .gd-table th.num { text-align: right; }
+.gd-empty { display: flex; align-items: center; justify-content: center; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+</style>
+
+<div class="gd">
+  <header class="gd-head" id="overview">
+    <h1 class="gd-title">Garmin journal</h1>
+    <p class="gd-lede" id="lede">Yesterday, <span class="gd-lede-date" data-source="latest" data-field="date" data-where="metric=hrv">—</span>: HRV <span data-source="latest" data-field="value" data-where="metric=hrv">—</span> ms against your 28-day median of <span data-source="latest" data-field="median" data-where="metric=hrv">—</span> ms, sleep score <span data-source="latest" data-field="value" data-where="metric=sleep_score">—</span>.</p>
+  </header>
+
+  <section class="gd-tiles" id="yesterday" aria-label="Yesterday against the 28-day median"></section>
+
+  <section class="gd-card" id="hrv">
+    <div class="gd-card-head">
+      <h2 class="gd-card-title">Overnight HRV</h2>
+      <div class="gd-seg" role="group" aria-label="Period">
+        <button type="button" id="range-90" data-days="90" aria-pressed="true">90 days</button>
+        <button type="button" id="range-365" data-days="365" aria-pressed="false">Year</button>
+      </div>
+    </div>
+    <p class="gd-note">Blue: overnight average. Grey dashed: median of the previous 28 days. A dot at the top = a journal tag. A gap = a night without data, not zero. Click to open the day.</p>
+    <div class="gd-chart is-main" id="chart-hrv" data-source="daily baseline"></div>
+  </section>
+
+  <section id="metrics" class="gd-grid"></section>
+
+  <section class="gd-card" id="day">
+    <div class="gd-card-head">
+      <h2 class="gd-card-title">Course of the day</h2>
+      <div class="gd-daynav">
+        <button type="button" id="day-prev" aria-label="Previous day">←</button>
+        <input type="date" id="day-input" min="2000-01-01" max="2099-12-31" aria-label="Day">
+        <button type="button" id="day-next" aria-label="Next day">→</button>
+      </div>
+    </div>
+    <p class="gd-note">Heart rate (blue) and Body Battery (green) through the day, activities in grey. Available for the last 60 days.</p>
+    <div class="gd-daytags" id="day-tags"></div>
+    <div class="gd-chart is-day" id="chart-day-hr" data-source="intraday activities"></div>
+    <div class="gd-chart is-day" id="chart-day-bb" data-source="intraday activities"></div>
+  </section>
+
+  <section class="gd-card" id="activities">
+    <h2 class="gd-card-title">Activities, last 30 days</h2>
+    <div class="gd-tablewrap">
+      <table class="gd-table" id="table-activities" data-source="activities" data-row-key="date,start">
+        <thead><tr>
+          <th data-field="date">Day</th><th data-field="start">Start</th><th data-field="type">Type</th>
+          <th class="num" data-field="duration_min">Minutes</th><th class="num" data-field="distance_km">km</th><th class="num" data-field="avg_hr">Avg HR</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+window.GD = (() => {
+  const METRICS = [
+    { key: 'hrv', label: 'HRV', unit: 'ms', good: 'high', decimals: 0 },
+    { key: 'sleep_score', label: 'Sleep score', unit: '', good: 'high', decimals: 0 },
+    { key: 'sleep_hours', label: 'Sleep duration', unit: 'h', good: 'high', decimals: 1 },
+    { key: 'resting_hr', label: 'Resting heart rate', unit: 'bpm', good: 'low', decimals: 0 },
+    { key: 'body_battery', label: 'Body Battery max', unit: '', good: 'high', decimals: 0 },
+    { key: 'stress', label: 'Average stress', unit: '', good: 'low', decimals: 0 },
+    { key: 'steps', label: 'Steps', unit: '', good: 'high', decimals: 0 },
+  ];
+  const nf = (d) => new Intl.NumberFormat('en', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmt = (v, d = 0) => (v == null || Number.isNaN(v) ? '—' : nf(d).format(v));
+  const parseDay = (s) => new Date(s + 'T00:00:00Z');
+  const czDay = (s) => d3.utcFormat('%b %-d')(parseDay(s));
+  const czMonth = (d) => d3.utcFormat('%b %-d')(d);
+  const state = { days: 90, day: null };
+  return { METRICS, fmt, parseDay, czDay, czMonth, state };
+})();
+</script>
+
+<script>
+// Median of the 28 days before each day (at least 7 values), for every metric.
+dash.calc('baseline', {
+  title: '28-day median',
+  description: 'For each day and metric, the median of the 28 days before it (at least 7 days with data).',
+  inputs: ['daily'],
+  fn: (daily) => {
+    const keys = ['hrv', 'sleep_score', 'sleep_hours', 'resting_hr', 'body_battery', 'stress', 'steps'];
+    const median = (xs) => { const s = [...xs].sort((a, b) => a - b); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+    return daily.map((row, i) => {
+      const out = { date: row.date };
+      for (const k of keys) {
+        const vals = daily.slice(Math.max(0, i - 28), i).map((r) => r[k]).filter((v) => v != null);
+        out[k] = vals.length >= 7 ? median(vals) : null;
+      }
+      return out;
+    });
+  },
+});
+
+// The last day against its 28-day median.
+dash.calc('latest', {
+  title: 'Yesterday vs. median',
+  description: 'Value of the last day, the median of the 28 days before it and the difference, for every metric.',
+  inputs: ['daily', 'baseline'],
+  fn: (daily, baseline) => {
+    const keys = [['hrv', 0], ['sleep_score', 0], ['sleep_hours', 1], ['resting_hr', 0], ['body_battery', 0], ['stress', 0], ['steps', 0]];
+    const last = daily[daily.length - 1];
+    const base = baseline[baseline.length - 1];
+    if (!last || !base) return [];
+    const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
+    return keys.map(([k, d]) => {
+      const value = round(last[k], d);
+      const median = round(base[k], d);
+      return { metric: k, date: last.date, value, median, diff: value != null && median != null ? round(value - median, d) : null };
+    });
+  },
+});
+</script>
+
+<script>
+(() => {
+  const { METRICS, fmt, czDay } = window.GD;
+  const tiles = document.getElementById('vcera');
+  const shown = METRICS.filter((m) => m.key !== 'stress');
+  for (const m of shown) {
+    const tile = document.createElement('div');
+    tile.className = 'gd-tile';
+    tile.id = `tile-${m.key}`;
+    tile.innerHTML = `
+      <div class="gd-tile-label"></div>
+      <div><span class="gd-tile-value dash-skeleton" data-source="latest" data-field="value" data-where="metric=${m.key}">—</span><span class="gd-tile-unit"></span></div>
+      <div class="gd-tile-diff" data-source="latest" data-field="diff" data-where="metric=${m.key}">—</div>
+      <div class="gd-tile-base">28-day median <span data-source="latest" data-field="median" data-where="metric=${m.key}">—</span></div>`;
+    tile.querySelector('.gd-tile-label').textContent = m.label;
+    tile.querySelector('.gd-tile-unit').textContent = m.unit;
+    tiles.appendChild(tile);
+  }
+
+  dash.onData(() => {
+    const res = dash.data('latest');
+    const rows = res.status === 'ok' ? res.data : [];
+    const by = Object.fromEntries(rows.map((r) => [r.metric, r]));
+    for (const m of shown) {
+      const tile = document.getElementById(`tile-${m.key}`);
+      const r = by[m.key];
+      const valueEl = tile.querySelector('.gd-tile-value');
+      const diffEl = tile.querySelector('.gd-tile-diff');
+      valueEl.classList.toggle('dash-skeleton', res.status === 'loading');
+      valueEl.textContent = r ? fmt(r.value, m.decimals) : '—';
+      tile.querySelector('.gd-tile-base span').textContent = r ? fmt(r.median, m.decimals) : '—';
+      diffEl.classList.remove('is-good', 'is-bad');
+      if (r && r.diff != null) {
+        diffEl.textContent = (r.diff > 0 ? '+' : '') + fmt(r.diff, m.decimals);
+        if (r.diff !== 0) diffEl.classList.add((r.diff > 0) === (m.good === 'high') ? 'is-good' : 'is-bad');
+      } else {
+        diffEl.textContent = '—';
+      }
+    }
+    const hrv = by.hrv;
+    const lede = document.getElementById('lede');
+    const spans = lede.querySelectorAll('span');
+    spans[0].textContent = hrv ? czDay(hrv.date) : '—';
+    spans[1].textContent = hrv ? fmt(hrv.value) : '—';
+    spans[2].textContent = hrv ? fmt(hrv.median) : '—';
+    spans[3].textContent = by.sleep_score ? fmt(by.sleep_score.value) : '—';
+  });
+})();
+</script>
+
+<script>
+// Daily line chart of a metric, with the 28-day median and journal tags.
+window.GD.lineChart = (el, metric, opts) => {
+  const { fmt, parseDay, czDay, czMonth, state } = window.GD;
+  el.replaceChildren();
+  const daily = dash.data('daily');
+  const base = dash.data('baseline');
+  if (daily.status !== 'ok' || base.status !== 'ok') {
+    if (daily.status === 'error' || base.status === 'error') {
+      const e = document.createElement('div');
+      e.className = 'gd-empty';
+      e.textContent = 'Failed to load';
+      el.appendChild(e);
+    } else {
+      el.classList.add('dash-skeleton');
+    }
+    return;
+  }
+  el.classList.remove('dash-skeleton');
+  const rows = daily.data.slice(-state.days);
+  const baseBy = new Map(base.data.map((r) => [r.date, r[metric.key]]));
+  const pts = rows.map((r) => ({ date: r.date, t: parseDay(r.date), v: r[metric.key], m: baseBy.get(r.date) ?? null, tags: r.tags || '' }));
+  const width = el.clientWidth || 600;
+  const height = opts.height;
+  const vals = pts.flatMap((p) => [p.v, p.m]).filter((v) => v != null);
+  if (!vals.length) {
+    const e = document.createElement('div');
+    e.className = 'gd-empty';
+    e.textContent = 'No data for this period';
+    el.appendChild(e);
+    return;
+  }
+  const [lo, hi] = d3.extent(vals);
+  const pad = (hi - lo) * 0.1 || 1;
+  const y = d3.scaleLinear([lo - pad, hi + pad], [height - 24, 14]).nice(4);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${width} ${height}`).attr('height', height);
+  const yTicks = y.ticks(4);
+  const probe = svg.append('text').attr('font-size', 11).text(fmt(yTicks[yTicks.length - 1], metric.decimals));
+  const left = Math.ceil(probe.node().getComputedTextLength()) + 10;
+  probe.remove();
+  const x = d3.scaleUtc(d3.extent(pts, (p) => p.t), [left, width - 8]);
+  const grid = svg.append('g');
+  for (const t of yTicks) {
+    grid.append('line').attr('x1', left).attr('x2', width - 8).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
+    grid.append('text').attr('x', left - 6).attr('y', y(t) + 4).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(fmt(t, metric.decimals));
+  }
+  const months = d3.utcMonth.range(d3.utcMonth.ceil(x.domain()[0]), x.domain()[1]);
+  const step = Math.max(1, Math.ceil(months.length / Math.max(1, Math.floor((width - left) / 60))));
+  months.filter((_, i) => i % step === 0).forEach((m) => {
+    svg.append('text').attr('x', x(m)).attr('y', height - 6).attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(czMonth(m));
+  });
+  const line = (key) => d3.line().defined((p) => p[key] != null).x((p) => x(p.t)).y((p) => y(p[key]));
+  svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', 'var(--cds-chart-muted)').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3').attr('d', line('m'));
+  svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('d', line('v'));
+  if (state.days <= 120) {
+    svg.append('g').selectAll('circle').data(pts.filter((p) => p.v != null)).join('circle')
+      .attr('cx', (p) => x(p.t)).attr('cy', (p) => y(p.v)).attr('r', 2).attr('fill', dash.colors[0]);
+  }
+  svg.append('g').selectAll('circle').data(pts.filter((p) => p.tags)).join('circle')
+    .attr('cx', (p) => x(p.t)).attr('cy', 6).attr('r', 3).attr('fill', 'var(--cds-chart-status-critical)');
+  const sel = state.day && pts.find((p) => p.date === state.day);
+  if (sel) svg.append('line').attr('x1', x(sel.t)).attr('x2', x(sel.t)).attr('y1', 10).attr('y2', height - 24).attr('stroke', 'var(--cds-chart-reference)');
+  const hoverDot = svg.append('circle').attr('r', 4).attr('fill', dash.colors[0]).attr('visibility', 'hidden');
+  const tip = document.createElement('div');
+  tip.className = 'gd-tip';
+  tip.hidden = true;
+  el.appendChild(tip);
+  const bis = d3.bisector((p) => p.t).center;
+  const nearest = (event) => pts[bis(pts, x.invert(d3.pointer(event, svg.node())[0]))];
+  svg.append('rect').attr('x', left).attr('y', 0).attr('width', width - left - 8).attr('height', height).attr('fill', 'transparent').style('cursor', 'pointer')
+    .on('mousemove', (event) => {
+      const p = nearest(event);
+      if (!p) return;
+      hoverDot.attr('visibility', p.v != null ? 'visible' : 'hidden').attr('cx', x(p.t)).attr('cy', p.v != null ? y(p.v) : 0);
+      tip.replaceChildren();
+      const d = document.createElement('div'); d.className = 'gd-tip-date'; d.textContent = czDay(p.date); tip.appendChild(d);
+      const v = document.createElement('div'); v.textContent = `${metric.label}: ${fmt(p.v, metric.decimals)} ${metric.unit}`.trim(); tip.appendChild(v);
+      const m = document.createElement('div'); m.textContent = `28-day median: ${fmt(p.m, metric.decimals)}`; tip.appendChild(m);
+      if (p.tags) { const t = document.createElement('div'); t.textContent = `Journal: ${p.tags}`; tip.appendChild(t); }
+      tip.hidden = false;
+      const scale = el.clientWidth / width;
+      const px = x(p.t) * scale;
+      tip.style.left = `${Math.min(Math.max(0, px + 10), el.clientWidth - tip.offsetWidth)}px`;
+      tip.style.top = '0px';
+    })
+    .on('mouseleave', () => { tip.hidden = true; hoverDot.attr('visibility', 'hidden'); })
+    .on('click', (event) => { const p = nearest(event); if (p) window.GD.openDay(p.date); });
+};
+</script>
+
+<script>
+(() => {
+  const { METRICS, state } = window.GD;
+  const grid = document.getElementById('metriky');
+  const small = METRICS.filter((m) => m.key !== 'hrv');
+  for (const m of small) {
+    const card = document.createElement('div');
+    card.className = 'gd-card';
+    card.id = `card-${m.key}`;
+    const h = document.createElement('h3');
+    h.className = 'gd-card-title';
+    h.textContent = m.unit ? `${m.label} (${m.unit})` : m.label;
+    const chart = document.createElement('div');
+    chart.className = 'gd-chart';
+    chart.id = `chart-${m.key}`;
+    chart.dataset.source = 'daily baseline';
+    card.append(h, chart);
+    grid.appendChild(card);
+  }
+  const hrv = METRICS.find((m) => m.key === 'hrv');
+  const buttons = document.querySelectorAll('.gd-seg button');
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    state.days = Number(b.dataset.days);
+    buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+    window.GD.drawDaily();
+  }));
+  window.GD.drawDaily = () => {
+    window.GD.lineChart(document.getElementById('chart-hrv'), hrv, { height: 260 });
+    for (const m of small) window.GD.lineChart(document.getElementById(`chart-${m.key}`), m, { height: 180 });
+  };
+  dash.onData(() => window.GD.drawDaily());
+})();
+</script>
+
+<script>
+(() => {
+  const { fmt, czDay, state } = window.GD;
+  const input = document.getElementById('day-input');
+  const tagsEl = document.getElementById('day-tags');
+  const shift = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  window.GD.openDay = (day) => {
+    state.day = day;
+    input.value = day;
+    window.GD.drawDay();
+    window.GD.drawDaily();
+    document.getElementById('day').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    dash.setLink('day');
+  };
+  input.addEventListener('change', () => { if (input.value && input.validity.valid) { state.day = input.value; window.GD.drawDay(); window.GD.drawDaily(); } });
+  document.getElementById('day-prev').addEventListener('click', () => { if (state.day) window.GD.openDay(shift(state.day, -1)); });
+  document.getElementById('day-next').addEventListener('click', () => { if (state.day) window.GD.openDay(shift(state.day, 1)); });
+
+  const dayChart = (el, rows, acts, opts) => {
+    el.replaceChildren();
+    if (!rows.length) {
+      const e = document.createElement('div');
+      e.className = 'gd-empty';
+      e.textContent = opts.empty;
+      el.appendChild(e);
+      return;
+    }
+    const width = el.clientWidth || 600;
+    const height = 200;
+    const t0 = new Date(state.day + 'T00:00:00');
+    const t1 = new Date(t0.getTime() + 24 * 3600e3);
+    const parse = (s) => new Date(s);
+    const y = d3.scaleLinear(opts.domain ?? d3.extent(rows, (r) => r.value), [height - 24, 10]).nice(4);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${width} ${height}`).attr('height', height);
+    const ticks = y.ticks(4);
+    const probe = svg.append('text').attr('font-size', 11).text(fmt(ticks[ticks.length - 1]));
+    const left = Math.ceil(probe.node().getComputedTextLength()) + 10;
+    probe.remove();
+    const x = d3.scaleTime([t0, t1], [left, width - 8]);
+    for (const a of acts) {
+      if (!a.start || a.duration_min == null) continue;
+      const s = new Date(`${a.date}T${a.start}:00`);
+      const e = new Date(s.getTime() + a.duration_min * 60e3);
+      svg.append('rect').attr('x', x(s)).attr('y', 10).attr('width', Math.max(2, x(e) - x(s))).attr('height', height - 34).attr('fill', 'var(--cds-chart-grid)');
+      svg.append('text').attr('x', x(s) + 4).attr('y', 22).attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(a.type || 'activity');
+    }
+    for (const t of ticks) {
+      svg.append('line').attr('x1', left).attr('x2', width - 8).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
+      svg.append('text').attr('x', left - 6).attr('y', y(t) + 4).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(fmt(t));
+    }
+    const hourStep = width < 480 ? 6 : 3;
+    for (let h = 0; h <= 24; h += hourStep) {
+      const t = new Date(t0.getTime() + h * 3600e3);
+      svg.append('text').attr('x', x(t)).attr('y', height - 6).attr('text-anchor', h === 0 ? 'start' : h === 24 ? 'end' : 'middle').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(`${h}:00`);
+    }
+    const pts = rows.map((r) => ({ t: parse(r.time), v: r.value, time: r.time }));
+    const gap = opts.gapMinutes * 60e3;
+    const line = d3.line().defined((p, i) => i === 0 || p.t - pts[i - 1].t <= gap).x((p) => x(p.t)).y((p) => y(p.v));
+    svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', opts.color).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('d', line);
+    const dot = svg.append('circle').attr('r', 4).attr('fill', opts.color).attr('visibility', 'hidden');
+    const tip = document.createElement('div');
+    tip.className = 'gd-tip';
+    tip.hidden = true;
+    el.appendChild(tip);
+    const bis = d3.bisector((p) => p.t).center;
+    svg.append('rect').attr('x', left).attr('y', 0).attr('width', width - left - 8).attr('height', height).attr('fill', 'transparent')
+      .on('mousemove', (event) => {
+        const p = pts[bis(pts, x.invert(d3.pointer(event, svg.node())[0]))];
+        if (!p) return;
+        dot.attr('visibility', 'visible').attr('cx', x(p.t)).attr('cy', y(p.v));
+        tip.replaceChildren();
+        const d = document.createElement('div'); d.className = 'gd-tip-date'; d.textContent = p.time.slice(11, 16); tip.appendChild(d);
+        const v = document.createElement('div'); v.textContent = `${opts.label}: ${fmt(p.v)}${opts.unit ? ' ' + opts.unit : ''}`; tip.appendChild(v);
+        tip.hidden = false;
+        const px = x(p.t) * (el.clientWidth / width);
+        tip.style.left = `${Math.min(Math.max(0, px + 10), el.clientWidth - tip.offsetWidth)}px`;
+        tip.style.top = '0px';
+      })
+      .on('mouseleave', () => { tip.hidden = true; dot.attr('visibility', 'hidden'); });
+  };
+
+  window.GD.drawDay = () => {
+    const intra = dash.data('intraday');
+    const acts = dash.data('activities');
+    const daily = dash.data('daily');
+    const hrEl = document.getElementById('chart-day-hr');
+    const bbEl = document.getElementById('chart-day-bb');
+    if (intra.status !== 'ok' || acts.status !== 'ok') {
+      for (const el of [hrEl, bbEl]) {
+        el.replaceChildren();
+        if (intra.status === 'error' || acts.status === 'error') {
+          const e = document.createElement('div'); e.className = 'gd-empty'; e.textContent = 'Failed to load'; el.appendChild(e);
+        } else { el.classList.add('dash-skeleton'); }
+      }
+      return;
+    }
+    hrEl.classList.remove('dash-skeleton');
+    bbEl.classList.remove('dash-skeleton');
+    if (!state.day) {
+      const days = [...new Set(intra.data.map((r) => r.time.slice(0, 10)))].sort();
+      state.day = days.length ? days[days.length - 1] : (daily.status === 'ok' && daily.data.length ? daily.data[daily.data.length - 1].date : null);
+    }
+    if (!state.day) return;
+    if (input !== document.activeElement) input.value = state.day;
+    const rows = intra.data.filter((r) => r.time.startsWith(state.day));
+    const dayActs = acts.data.filter((a) => a.date === state.day);
+    const row = daily.status === 'ok' ? daily.data.find((r) => r.date === state.day) : null;
+    tagsEl.replaceChildren();
+    const lbl = document.createElement('span');
+    lbl.textContent = `${czDay(state.day)} `;
+    tagsEl.appendChild(lbl);
+    for (const t of (row && row.tags ? row.tags.split(', ') : [])) {
+      const c = document.createElement('span'); c.className = 'gd-chip'; c.textContent = t; tagsEl.appendChild(c);
+    }
+    dayChart(hrEl, rows.filter((r) => r.metric === 'hr'), dayActs, { label: 'Heart rate', unit: 'bpm', color: dash.colors[0], gapMinutes: 10, empty: 'No heart rate for this day' });
+    dayChart(bbEl, rows.filter((r) => r.metric === 'body_battery'), dayActs, { label: 'Body Battery', unit: '', color: dash.colors[1], gapMinutes: 60, domain: [0, 100], empty: 'No Body Battery for this day' });
+  };
+  dash.onData(() => window.GD.drawDay());
+})();
+</script>
+
+<script>
+(() => {
+  const { fmt } = window.GD;
+  const body = document.querySelector('#table-activities tbody');
+  dash.onData(() => {
+    const res = dash.data('activities');
+    body.replaceChildren();
+    if (res.status !== 'ok') return;
+    const last = res.data.length ? res.data[res.data.length - 1].date : null;
+    if (!last) return;
+    const from = new Date(last + 'T00:00:00Z');
+    from.setUTCDate(from.getUTCDate() - 29);
+    const cut = from.toISOString().slice(0, 10);
+    const rows = res.data.filter((a) => a.date >= cut).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+    for (const a of rows) {
+      const tr = document.createElement('tr');
+      const cells = [a.date, a.start ?? '—', a.type ?? '—', fmt(a.duration_min), fmt(a.distance_km, 1), fmt(a.avg_hr)];
+      cells.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i >= 3) td.className = 'num'; tr.appendChild(td); });
+      body.appendChild(tr);
+    }
+  });
+  const named = document.getElementById(location.hash.slice(1));
+  if (named) setTimeout(() => named.scrollIntoView(), 300);
+})();
+</script>

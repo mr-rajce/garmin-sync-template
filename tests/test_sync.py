@@ -46,9 +46,10 @@ class FakeClient:
         self._maybe_fail("steps")
         return self._days(s, e, totalSteps=9000)
 
-    def get_daily_body_battery(self, s, e):
-        self._maybe_fail("body_battery")
-        return self._days(s, e, key="date")
+    def get_daily_body_battery(self, s, e, chunks=None):
+        name = "body_battery_intraday" if chunks else "body_battery"
+        self._maybe_fail(name)
+        return self._days(s, e, key="date", points=chunks or 3)
 
     def get_weight_measurements(self, s, e):
         self._maybe_fail("weight")
@@ -64,6 +65,12 @@ class FakeClient:
         meta = {"mealDate": day.isoformat(), "dayStartTime": "07:00:00", "mealDetails": []}
         foods = [{"foodName": "porridge"}] if day == START else []
         return {**meta, "loggedFoodsWithServingSizes": foods}
+
+    def get_daily_heart_rate(self, day):
+        self._maybe_fail("heart_rate")
+        # Real API shape; a day without the watch has heartRateValues null.
+        values = [[1919462400000, 58], [1919462520000, 61]] if day == START else None
+        return {"calendarDate": day.isoformat(), "restingHeartRate": 45, "heartRateValues": values}
 
     def search_activities(self, *, start, limit, start_date, end_date):
         self._maybe_fail("activities")
@@ -81,6 +88,11 @@ def test_sync_all_writes_one_file_per_day(tmp_path: Path):
     # Food log only for the day that has entries.
     assert report.changed["food_logs"] == 1
     assert not (tmp_path / "food_logs/2030/2030-10-21.json").exists()
+    # Intraday heart rate only for the day with values, 15-minute Body Battery separately.
+    assert report.changed["heart_rate"] == 1
+    assert not (tmp_path / "heart_rate/2030/2030-10-21.json").exists()
+    intraday = json.loads((tmp_path / "body_battery_intraday/2030/2030-10-20.json").read_text(encoding="utf-8"))
+    assert intraday["points"] == 96
 
 
 def test_unknown_response_shape_is_reported_not_written(tmp_path: Path):
@@ -223,3 +235,11 @@ def test_day_with_null_date_is_skipped_silently(tmp_path: Path):
     report = sync.sync_all(NightWithoutWatch(), START, END, tmp_path)
     assert not any(e.startswith("sleep") for e in report.errors)
     assert (tmp_path / "sleep/2030/2030-10-21.json").exists()
+
+
+def test_failing_intraday_does_not_break_daily_body_battery(tmp_path: Path):
+    report = sync.sync_all(FakeClient(fail={"body_battery_intraday"}), START, END, tmp_path)
+    assert [e for e in report.errors if e.startswith("body_battery")] == [
+        "body_battery_intraday 2030-10-20..2030-10-21: body_battery_intraday failed"
+    ]
+    assert report.changed["body_battery"] == 2

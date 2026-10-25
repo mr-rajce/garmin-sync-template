@@ -41,6 +41,8 @@ Garmin Personal API ──(GitHub Action every morning, last 7 days)──► da
 | `weight` | weight (only days with a measurement) | 31 |
 | `hydration` | water intake (only if you log it) | 31 |
 | `food_logs` | food logged in Garmin Connect (only days with entries) | per day |
+| `heart_rate` | heart rate through the day (`heartRateValues`, about every 2 min; only days with values; Garmin returned roughly the last 5 months) | per day |
+| `body_battery_intraday` | Body Battery every 15 minutes (`chunks=96`) | 31 |
 | `activities/<year>/<day>-<id>.json` | activity summaries (not .FIT files; may include GPS start/end coordinates) | paged |
 
 - **A missing file means Garmin returned nothing for that day** (watch not worn or not synced). It is not zero. Nights without the watch are skipped.
@@ -61,6 +63,10 @@ Locally: `python -m garmin_sync.dashboard`.
 ## Daily check
 
 After every sync, `garmin_sync/check.py` compares yesterday and the day before with your 28-day median. A clear deviation that lasts both days is written to `reports/daily/<YYYY-MM>.md` and shown as a warning in Actions. Rules are in `CLAUDE.md`. No Claude involved, no cost.
+
+## Optional: dashboard in a Claude artifact
+
+The repo dashboard keeps your data on GitHub only. If you want an interactive version (hover values, zoom, journal tags on the charts, the course of any day), you can have Claude build a **private** Claude artifact from `artifact/index.html`. It needs a copy of your data on claude.ai, so it is **off by default**: turn it on by adding the exception in `CLAUDE.md` (section Optional: artifact) yourself, then ask Claude "build my Garmin dashboard artifact". `python -m garmin_sync.export --out <folder>` writes only daily summaries, the course of the day and journal tags (never raw files, journal text, GPS or activity names).
 
 ## Agents (optional)
 

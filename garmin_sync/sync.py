@@ -136,22 +136,28 @@ def sync_range_dataset(
             report.count(dataset.name, store.write_if_changed(store.day_path(root, dataset.name, day), item))
 
 
-def sync_food_logs(
-    client: Any, start: date, end: date, root: Path, report: Report, pause: Callable[[], None]
+def sync_day_dataset(
+    client: Any,
+    dataset: datasets.DayDataset,
+    start: date,
+    end: date,
+    root: Path,
+    report: Report,
+    pause: Callable[[], None],
 ) -> None:
-    report.count(datasets.FOOD_LOGS, False)
+    report.count(dataset.name, False)
     for day in store.date_range(start, end):
         try:
-            raw = client.get_daily_food_logs(day)
+            raw = dataset.fetch(client, day)
         except Exception as exc:
-            report.errors.append(f"{datasets.FOOD_LOGS} {day}: {exc}")
+            report.errors.append(f"{dataset.name} {day}: {exc}")
             return
         finally:
             pause()
-        if not datasets.has_food(raw):
+        if not datasets.has_entries(raw):
             continue
-        path = store.day_path(root, datasets.FOOD_LOGS, day.isoformat())
-        report.count(datasets.FOOD_LOGS, store.write_if_changed(path, raw))
+        path = store.day_path(root, dataset.name, day.isoformat())
+        report.count(dataset.name, store.write_if_changed(path, raw))
 
 
 def sync_activities(
@@ -200,7 +206,8 @@ def sync_all(
     report = Report()
     for dataset in datasets.RANGE_DATASETS:
         sync_range_dataset(client, dataset, start, end, root, report, pause)
-    sync_food_logs(client, start, end, root, report, pause)
+    for day_dataset in datasets.DAY_DATASETS:
+        sync_day_dataset(client, day_dataset, start, end, root, report, pause)
     sync_activities(client, start, end, root, report, pause)
     return report
 
