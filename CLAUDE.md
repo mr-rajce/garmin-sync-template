@@ -45,6 +45,25 @@ File `reports/<year>-W<week>.md` (the ISO week that just ended). At most one scr
 4. **What to focus on**: at most 2 concrete things for next week, derived from the data.
 5. **Missing data**: days and datasets without data.
 
+## Optional: HRV analysis
+
+Only when the owner asks for it (e.g. "include the HRV analysis" in the routine prompt). Add a section **HRV: what came before better and worse nights** to the weekly summary:
+
+- Take the last 28 nights (`data/hrv`, field `lastNightAvg`). Compare the quarter of nights with the highest HRV against the quarter with the lowest.
+- For each night look at the day and night before: sleep duration and bedtime (`data/sleep`), average stress and Body Battery (`data/daily_summary`), steps, activities and their timing (`data/activities`, training after 18:00 separately), and work load if the calendar is available (section Optional: calendar).
+- Report only differences that are visible between the groups, with numbers (e.g. "nights with HRV above 60 ms: median sleep 7.6 h; below 45 ms: 5.9 h"). With few nights, say it is only a hint.
+- From that, at most 2 concrete things to try next week, derived only from the owner's data, no generic advice.
+- Check whether the things suggested in the previous summary (previous file in `reports/`) showed up: compare last week's HRV with the median of the 4 weeks before.
+- Still no diagnoses or medical advice.
+
+## Optional: calendar
+
+Only when the routine has a Google Calendar connector. Use it read-only, for the owner's calendar over the evaluated period and the 28 days before:
+
+- Write to the repo **only daily aggregates**: number of meetings, hours in meetings, end of the last meeting, meetings after 18:00, all-day events such as travel or holiday. **Never titles, descriptions, locations or attendees** (that is data about other people too).
+- Never write to or change the calendar. Never send Garmin data to the calendar or anywhere else.
+- Without the connector or without access, skip this and say why.
+
 ## Daily check
 
 Done automatically by the GitHub Action after every sync (`garmin_sync/check.py`), without an LLM. Rules:

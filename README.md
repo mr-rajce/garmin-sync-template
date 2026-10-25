@@ -64,7 +64,14 @@ Rules for agents are in [`CLAUDE.md`](CLAUDE.md): data never leaves the repo, co
 
 For a weekly summary, create a routine in claude.ai → **Routines → New routine** and select **your repo as the source** (a routine without the repo as its source cannot reach the data):
 
-- **Weekly summary** (Monday morning): "Write the weekly summary for the ISO week that just ended into reports/<year>-W<week>.md as described in CLAUDE.md. Back every claim with a number and a date, a missing day is not zero, no diagnoses. Commit only that file to main and push. Never send the data outside the repo."
+- **Weekly summary** (Monday morning): "Write the weekly summary for the ISO week that just ended into reports/YEAR-WWEEK.md (e.g. reports/2030-W43.md) as described in CLAUDE.md. Back every claim with a number and a date, a missing day is not zero, no diagnoses. Commit only that file to main and push. Never send the data outside the repo."
+
+Optional, described in `CLAUDE.md`:
+
+- **HRV analysis:** add "Include the HRV analysis." to the prompt. It compares your best and worst nights of the last 28 and what came before them, and suggests at most 2 things to try, based only on your data.
+- **Calendar:** add only the **Google Calendar** connector to the routine (and no others: the fewer connectors, the fewer ways for health data to leave). The summary then includes daily meeting load, never meeting titles or attendees.
+
+Note: the routine form may swallow text in angle brackets such as `<year>`, so the prompt above uses YEAR-WWEEK instead.
 
 ## Local development
 
