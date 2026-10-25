@@ -29,6 +29,7 @@ BASELINE_DAYS = 28
 MIN_BASELINE_VALUES = 7
 RECENT_ACTIVITY_DAYS = 30
 MAX_ACTIVITIES = 10
+GUIDE = "../docs/charts.md"  # chart guide, relative to reports/dashboard.md
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 
@@ -223,7 +224,13 @@ def journal_section(journal: journal_mod.Journal, start: date, end: date) -> lis
     return lines + [""]
 
 
-def build(data_dir: Path, reports_dir: Path, today: date, journal: journal_mod.Journal | None = None) -> str:
+def build(
+    data_dir: Path,
+    reports_dir: Path,
+    today: date,
+    journal: journal_mod.Journal | None = None,
+    guide: str = GUIDE,
+) -> str:
     """Write charts to reports/charts/ and return the dashboard markdown."""
     yesterday = today - timedelta(days=1)
     chart_start = yesterday - timedelta(days=CHART_DAYS - 1)
@@ -237,7 +244,7 @@ def build(data_dir: Path, reports_dir: Path, today: date, journal: journal_mod.J
         "",
         f"As of {yesterday.isoformat()} (today is usually incomplete, hence yesterday). "
         f"Compared with the median of the {BASELINE_DAYS} days before. Regenerated after every sync.",
-        "Clear deviations lasting 2 days: [daily check](daily/).",
+        f"Clear deviations lasting 2 days: [daily check](daily/). How to read the charts: [chart guide]({guide}).",
         "",
         f"| Metric | Yesterday | {BASELINE_DAYS}-day median | Difference |",
         "|---|---:|---:|---:|",
@@ -263,7 +270,7 @@ def build(data_dir: Path, reports_dir: Path, today: date, journal: journal_mod.J
             "",
             f"![{metric.label}](charts/{metric.key}.svg)",
             "",
-            f"Days with data: {in_chart} of {CHART_DAYS}.",
+            f"Days with data: {in_chart} of {CHART_DAYS}. [How to read this chart]({guide}#{metric.key})",
             "",
         ]
         if metric.key in TREND_METRICS:
@@ -284,7 +291,7 @@ def build(data_dir: Path, reports_dir: Path, today: date, journal: journal_mod.J
                 trends += [
                     f"Highest: week of {hi.isoformat()}, {fmt(weekly[hi], metric.decimals)}. "
                     f"Lowest: week of {lo.isoformat()}, {fmt(weekly[lo], metric.decimals)}. "
-                    f"Weeks with data: {len(weekly)} of {TREND_WEEKS}.",
+                    f"Weeks with data: {len(weekly)} of {TREND_WEEKS}. [How to read the trend]({guide}#trend)",
                     "",
                 ]
 

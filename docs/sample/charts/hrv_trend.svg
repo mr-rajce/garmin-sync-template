@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220" font-family="sans-serif" font-size="11">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<line x1="52" x2="708" y1="192.0" y2="192.0" stroke="#e5e5e5"/><text x="46" y="196.0" text-anchor="end" fill="#666666">36</text>
+<line x1="52" x2="708" y1="147.0" y2="147.0" stroke="#e5e5e5"/><text x="46" y="151.0" text-anchor="end" fill="#666666">44</text>
+<line x1="52" x2="708" y1="102.0" y2="102.0" stroke="#e5e5e5"/><text x="46" y="106.0" text-anchor="end" fill="#666666">52</text>
+<line x1="52" x2="708" y1="57.0" y2="57.0" stroke="#e5e5e5"/><text x="46" y="61.0" text-anchor="end" fill="#666666">60</text>
+<line x1="52" x2="708" y1="12.0" y2="12.0" stroke="#e5e5e5"/><text x="46" y="16.0" text-anchor="end" fill="#666666">68</text>
+<line x1="57.5" x2="57.5" y1="12" y2="192" stroke="#f0f0f0"/><text x="57.5" y="210" text-anchor="middle" fill="#666666">1 Nov</text>
+<line x1="112.6" x2="112.6" y1="12" y2="192" stroke="#f0f0f0"/><text x="112.6" y="210" text-anchor="middle" fill="#666666">1 Dec</text>
+<line x1="169.6" x2="169.6" y1="12" y2="192" stroke="#f0f0f0"/><text x="169.6" y="210" text-anchor="middle" fill="#666666">1 Jan</text>
+<line x1="226.6" x2="226.6" y1="12" y2="192" stroke="#f0f0f0"/><text x="226.6" y="210" text-anchor="middle" fill="#666666">1 Feb</text>
+<line x1="278.0" x2="278.0" y1="12" y2="192" stroke="#f0f0f0"/><text x="278.0" y="210" text-anchor="middle" fill="#666666">1 Mar</text>
+<line x1="335.0" x2="335.0" y1="12" y2="192" stroke="#f0f0f0"/><text x="335.0" y="210" text-anchor="middle" fill="#666666">1 Apr</text>
+<line x1="390.1" x2="390.1" y1="12" y2="192" stroke="#f0f0f0"/><text x="390.1" y="210" text-anchor="middle" fill="#666666">1 May</text>
+<line x1="447.1" x2="447.1" y1="12" y2="192" stroke="#f0f0f0"/><text x="447.1" y="210" text-anchor="middle" fill="#666666">1 Jun</text>
+<line x1="502.2" x2="502.2" y1="12" y2="192" stroke="#f0f0f0"/><text x="502.2" y="210" text-anchor="middle" fill="#666666">1 Jul</text>
+<line x1="559.2" x2="559.2" y1="12" y2="192" stroke="#f0f0f0"/><text x="559.2" y="210" text-anchor="middle" fill="#666666">1 Aug</text>
+<line x1="616.1" x2="616.1" y1="12" y2="192" stroke="#f0f0f0"/><text x="616.1" y="210" text-anchor="middle" fill="#666666">1 Sep</text>
+<line x1="671.2" x2="671.2" y1="12" y2="192" stroke="#f0f0f0"/><text x="671.2" y="210" text-anchor="middle" fill="#666666">1 Oct</text>
+<polyline points="52.0,102.0 64.9,107.8 77.7,107.8 90.6,90.5 103.5,107.8 116.3,84.7 129.2,78.9 142.0,102.0 154.9,119.3 167.8,64.5 180.6,90.5 193.5,67.4 206.4,73.2 219.2,55.8 232.1,81.8 244.9,38.5 257.8,73.2 270.7,44.3 283.5,50.1 296.4,35.7 309.3,61.6 322.1,50.1 335.0,50.1 347.8,27.0 360.7,44.3 373.6,38.5 386.4,50.1 399.3,27.0 412.2,44.3 425.0,73.2 437.9,90.5 450.7,73.2 463.6,58.7 476.5,67.4 489.3,78.9 502.2,90.5 515.1,81.8 527.9,61.6 540.8,113.5 553.6,73.2 566.5,136.6 579.4,90.5 592.2,119.3 605.1,177.0 618.0,113.5 630.8,130.8 643.7,102.0 656.5,113.5 669.4,130.8 682.3,148.2 695.1,110.7" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+<circle cx="52.0" cy="102.0" r="2" fill="#2563eb"/>
+<circle cx="64.9" cy="107.8" r="2" fill="#2563eb"/>
+<circle cx="77.7" cy="107.8" r="2" fill="#2563eb"/>
+<circle cx="90.6" cy="90.5" r="2" fill="#2563eb"/>
+<circle cx="103.5" cy="107.8" r="2" fill="#2563eb"/>
+<circle cx="116.3" cy="84.7" r="2" fill="#2563eb"/>
+<circle cx="129.2" cy="78.9" r="2" fill="#2563eb"/>
+<circle cx="142.0" cy="102.0" r="2" fill="#2563eb"/>
+<circle cx="154.9" cy="119.3" r="2" fill="#2563eb"/>
+<circle cx="167.8" cy="64.5" r="2" fill="#2563eb"/>
+<circle cx="180.6" cy="90.5" r="2" fill="#2563eb"/>
+<circle cx="193.5" cy="67.4" r="2" fill="#2563eb"/>
+<circle cx="206.4" cy="73.2" r="2" fill="#2563eb"/>
+<circle cx="219.2" cy="55.8" r="2" fill="#2563eb"/>
+<circle cx="232.1" cy="81.8" r="2" fill="#2563eb"/>
+<circle cx="244.9" cy="38.5" r="2" fill="#2563eb"/>
+<circle cx="257.8" cy="73.2" r="2" fill="#2563eb"/>
+<circle cx="270.7" cy="44.3" r="2" fill="#2563eb"/>
+<circle cx="283.5" cy="50.1" r="2" fill="#2563eb"/>
+<circle cx="296.4" cy="35.7" r="2" fill="#2563eb"/>
+<circle cx="309.3" cy="61.6" r="2" fill="#2563eb"/>
+<circle cx="322.1" cy="50.1" r="2" fill="#2563eb"/>
+<circle cx="335.0" cy="50.1" r="2" fill="#2563eb"/>
+<circle cx="347.8" cy="27.0" r="2" fill="#2563eb"/>
+<circle cx="360.7" cy="44.3" r="2" fill="#2563eb"/>
+<circle cx="373.6" cy="38.5" r="2" fill="#2563eb"/>
+<circle cx="386.4" cy="50.1" r="2" fill="#2563eb"/>
+<circle cx="399.3" cy="27.0" r="2" fill="#2563eb"/>
+<circle cx="412.2" cy="44.3" r="2" fill="#2563eb"/>
+<circle cx="425.0" cy="73.2" r="2" fill="#2563eb"/>
+<circle cx="437.9" cy="90.5" r="2" fill="#2563eb"/>
+<circle cx="450.7" cy="73.2" r="2" fill="#2563eb"/>
+<circle cx="463.6" cy="58.7" r="2" fill="#2563eb"/>
+<circle cx="476.5" cy="67.4" r="2" fill="#2563eb"/>
+<circle cx="489.3" cy="78.9" r="2" fill="#2563eb"/>
+<circle cx="502.2" cy="90.5" r="2" fill="#2563eb"/>
+<circle cx="515.1" cy="81.8" r="2" fill="#2563eb"/>
+<circle cx="527.9" cy="61.6" r="2" fill="#2563eb"/>
+<circle cx="540.8" cy="113.5" r="2" fill="#2563eb"/>
+<circle cx="553.6" cy="73.2" r="2" fill="#2563eb"/>
+<circle cx="566.5" cy="136.6" r="2" fill="#2563eb"/>
+<circle cx="579.4" cy="90.5" r="2" fill="#2563eb"/>
+<circle cx="592.2" cy="119.3" r="2" fill="#2563eb"/>
+<circle cx="605.1" cy="177.0" r="2" fill="#2563eb"/>
+<circle cx="618.0" cy="113.5" r="2" fill="#2563eb"/>
+<circle cx="630.8" cy="130.8" r="2" fill="#2563eb"/>
+<circle cx="643.7" cy="102.0" r="2" fill="#2563eb"/>
+<circle cx="656.5" cy="113.5" r="2" fill="#2563eb"/>
+<circle cx="669.4" cy="130.8" r="2" fill="#2563eb"/>
+<circle cx="682.3" cy="148.2" r="2" fill="#2563eb"/>
+<circle cx="695.1" cy="110.7" r="2" fill="#2563eb"/>
+</svg>

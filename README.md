@@ -7,6 +7,8 @@ Your own Garmin data, downloaded every morning into JSON files in **your own pri
 - Read-only. Nothing is ever written to Garmin.
 - No server, no third-party service: GitHub Actions runs the download, the data stays in your repo.
 
+**See what you get:** a [sample dashboard with made-up data](docs/sample/dashboard.md) and [how to read the charts](docs/charts.md).
+
 ```
 Garmin Personal API ──(GitHub Action every morning, last 7 days)──► data/<dataset>/<year>/<YYYY-MM-DD>.json
                                                                      │
@@ -57,6 +59,8 @@ Garmin Personal API ──(GitHub Action every morning, last 7 days)──► da
 ## Dashboard
 
 [`reports/dashboard.md`](reports/dashboard.md): yesterday's values against your own 28-day median, 90-day charts (sleep score and duration, HRV, resting heart rate, Body Battery, stress, steps), a one-year trend of weekly medians (HRV, resting heart rate, sleep score and duration) and recent activities. It is regenerated after every sync from the data in the repo; nothing is sent anywhere. GitHub renders it on the web and in the mobile app.
+
+How to read each chart: [`docs/charts.md`](docs/charts.md). A sample with made-up data: [`docs/sample/dashboard.md`](docs/sample/dashboard.md) (regenerate with `python -m garmin_sync.sample`).
 
 Locally: `python -m garmin_sync.dashboard`.
 
