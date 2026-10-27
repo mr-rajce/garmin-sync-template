@@ -42,3 +42,18 @@ def test_intraday_rows_local_time_and_bad_shapes_skipped(tmp_path: Path):
         {"time": "2030-10-23T14:00", "metric": "hr", "value": 88},
         {"time": "2030-10-23T15:30", "metric": "body_battery", "value": 16},
     ]
+
+
+def test_today_has_only_night_metrics(tmp_path: Path):
+    iso = DAY.isoformat()
+    store.write_if_changed(store.day_path(tmp_path, "hrv", iso), {"calendarDate": iso, "lastNightAvg": 52})
+    store.write_if_changed(store.day_path(tmp_path, "sleep", iso), {"calendarDate": iso, "sleepTimeSeconds": 7 * 3600,
+                                                                     "sleepScores": {"overall": {"value": 81}}})
+    store.write_if_changed(store.day_path(tmp_path, "daily_summary", iso), {
+        "calendarDate": iso, "heartRate": {"restingValue": 47}, "bodyBattery": {"maxValue": 90}, "stress": {"avgLevel": 12}})
+    store.write_if_changed(store.day_path(tmp_path, "steps", iso), {"calendarDate": iso, "totalSteps": 800})
+    [row] = export.daily_rows(tmp_path, journal.Journal(), DAY, DAY, partial=DAY)
+    assert (row["hrv"], row["sleep_score"], row["sleep_hours"], row["body_battery"]) == (52, 81, 7.0, 90)
+    assert (row["resting_hr"], row["stress"], row["steps"]) == (None, None, None)
+    [full] = export.daily_rows(tmp_path, journal.Journal(), DAY, DAY)
+    assert full["steps"] == 800

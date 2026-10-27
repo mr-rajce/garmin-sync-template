@@ -7,6 +7,7 @@
 .gd-tiles { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
 .gd-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: grid; gap: var(--cds-gap-xs); align-content: start; }
 .gd-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.gd-tile-date { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: calc(-1 * var(--cds-gap-xs)); }
 .gd-tile-value { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.1; min-height: 1.1em; }
 .gd-tile-unit { font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-left: 0.25em; }
 .gd-tile-diff { font-size: var(--cds-font-size-caption); min-height: 1.2em; }
@@ -46,10 +47,10 @@
 <div class="gd">
   <header class="gd-head" id="overview">
     <h1 class="gd-title">Garmin journal</h1>
-    <p class="gd-lede" id="lede">Yesterday, <span class="gd-lede-date" data-source="latest" data-field="date" data-where="metric=hrv">—</span>: HRV <span data-source="latest" data-field="value" data-where="metric=hrv">—</span> ms against your 28-day median of <span data-source="latest" data-field="median" data-where="metric=hrv">—</span> ms, sleep score <span data-source="latest" data-field="value" data-where="metric=sleep_score">—</span>.</p>
+    <p class="gd-lede" id="lede">Last night, <span class="gd-lede-date" data-source="latest" data-field="date" data-where="metric=hrv">—</span>: HRV <span data-source="latest" data-field="value" data-where="metric=hrv">—</span> ms against your 28-day median of <span data-source="latest" data-field="median" data-where="metric=hrv">—</span> ms, sleep score <span data-source="latest" data-field="value" data-where="metric=sleep_score">—</span>.</p>
   </header>
 
-  <section class="gd-tiles" id="yesterday" aria-label="Yesterday against the 28-day median"></section>
+  <section class="gd-tiles" id="yesterday" aria-label="Latest values against the 28-day median"></section>
 
   <section class="gd-card" id="hrv">
     <div class="gd-card-head">
@@ -164,21 +165,21 @@ dash.calc('baseline', {
   },
 });
 
-// The last day against its 28-day median.
+// The last day with a value (last night for sleep and HRV, yesterday for steps and heart rate) against the 28-day median before it.
 dash.calc('latest', {
-  title: 'Yesterday vs. median',
-  description: 'Value of the last day, the median of the 28 days before it and the difference, for every metric.',
+  title: 'Latest value vs. median',
+  description: 'For every metric the last day that has a value, the median of the 28 days before it and the difference.',
   inputs: ['daily', 'baseline'],
   fn: (daily, baseline) => {
     const keys = [['hrv', 0], ['sleep_score', 0], ['sleep_hours', 1], ['resting_hr', 0], ['body_battery', 0], ['stress', 0], ['steps', 0]];
-    const last = daily[daily.length - 1];
-    const base = baseline[baseline.length - 1];
-    if (!last || !base) return [];
     const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
-    return keys.map(([k, d]) => {
+    const baseBy = new Map(baseline.map((r) => [r.date, r]));
+    return keys.flatMap(([k, d]) => {
+      const last = [...daily].reverse().find((r) => r[k] != null);
+      if (!last) return [];
       const value = round(last[k], d);
-      const median = round(base[k], d);
-      return { metric: k, date: last.date, value, median, diff: value != null && median != null ? round(value - median, d) : null };
+      const median = round(baseBy.get(last.date)?.[k], d);
+      return [{ metric: k, date: last.date, value, median, diff: value != null && median != null ? round(value - median, d) : null }];
     });
   },
 });
@@ -236,6 +237,7 @@ dash.calc('periods', {
     tile.id = `tile-${m.key}`;
     tile.innerHTML = `
       <div class="gd-tile-label"></div>
+      <div class="gd-tile-date" data-source="latest" data-field="date" data-where="metric=${m.key}">—</div>
       <div><span class="gd-tile-value dash-skeleton" data-source="latest" data-field="value" data-where="metric=${m.key}">—</span><span class="gd-tile-unit"></span></div>
       <div class="gd-tile-diff" data-source="latest" data-field="diff" data-where="metric=${m.key}">—</div>
       <div class="gd-tile-base">28-day median <span data-source="latest" data-field="median" data-where="metric=${m.key}">—</span></div>`;
@@ -255,6 +257,7 @@ dash.calc('periods', {
       const diffEl = tile.querySelector('.gd-tile-diff');
       valueEl.classList.toggle('dash-skeleton', res.status === 'loading');
       valueEl.textContent = r ? fmt(r.value, m.decimals) : '—';
+      tile.querySelector('.gd-tile-date').textContent = r ? czDay(r.date) : '—';
       tile.querySelector('.gd-tile-base span').textContent = r ? fmt(r.median, m.decimals) : '—';
       diffEl.classList.remove('is-good', 'is-bad');
       if (r && r.diff != null) {

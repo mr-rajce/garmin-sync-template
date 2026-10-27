@@ -108,7 +108,7 @@ Artifact URL: (none yet)
 
 **Build it** (once, when the owner asks "build my Garmin dashboard artifact" and the exception is on):
 
-1. `python -m garmin_sync.export --out <scratch folder>`: writes `daily.json` (one year), `activities.json` and `intraday.json` (last 60 days). Never upload anything else.
+1. `python -m garmin_sync.export --out <scratch folder>`: writes `daily.json` (one year up to today; for today only the night metrics: sleep, HRV, Body Battery max), `activities.json` and `intraday.json` (last 60 days). Never upload anything else.
 2. Create an artifact from the **Dashboard** artifact type (Artifact tool, `action: "quickstart"`, then publish with the Dashboard `type_url`), titled "Garmin journal". Follow the type's own instructions for the details below.
 3. Upload the three files as assets of that artifact.
 4. In its store write `dash/meta` `{title}`, and three file datasets with exactly these ids, since the page reads them: `datasets/daily`, `datasets/activities`, `datasets/intraday` (`source: {kind: "file", url, name}`, `updated: {at, by}`, a `title` and `description` each).

@@ -21,16 +21,25 @@ from .dashboard import METRICS, ROOT, load_series
 
 DAILY_DAYS = 365
 INTRADAY_DAYS = 60
+# Last night is complete once you wake up; today's heart rate, stress and steps are not (left as None).
+NIGHT_KEYS = ("sleep_score", "sleep_hours", "hrv", "body_battery")
 
 
-def daily_rows(data_dir: Path, journal: journal_mod.Journal, start: date, end: date) -> list[dict[str, Any]]:
-    """One row per day: dashboard metrics (missing = None, not zero) and journal tags."""
+def daily_rows(
+    data_dir: Path, journal: journal_mod.Journal, start: date, end: date, partial: date | None = None
+) -> list[dict[str, Any]]:
+    """One row per day: dashboard metrics (missing = None, not zero) and journal tags.
+
+    For the day `partial` (today) only the night metrics NIGHT_KEYS, the rest None.
+    """
     series = {m.key: load_series(data_dir, m, start, end) for m in METRICS}
     rows = []
     for day in store.date_range(start, end):
         row: dict[str, Any] = {"date": day.isoformat()}
         for m in METRICS:
             value = series[m.key].get(day)
+            if day == partial and m.key not in NIGHT_KEYS:
+                value = None
             row[m.key] = round(value, m.decimals) if value is not None else None
         row["tags"] = ", ".join(journal.tags(day))
         rows.append(row)
@@ -92,12 +101,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-dir", type=Path, default=ROOT / "data")
     args = parser.parse_args(argv)
     tz = ZoneInfo(os.environ.get("GARMIN_TZ", "Europe/Prague"))
-    yesterday = datetime.now(tz).date() - timedelta(days=1)
+    today = datetime.now(tz).date()
+    yesterday = today - timedelta(days=1)
     journal = journal_mod.load(ROOT / "journal")
     args.out.mkdir(parents=True, exist_ok=True)
     outputs = {
-        "daily.json": daily_rows(args.data_dir, journal, yesterday - timedelta(days=DAILY_DAYS - 1), yesterday),
-        "activities.json": activity_rows(args.data_dir, yesterday - timedelta(days=DAILY_DAYS - 1), yesterday),
+        "daily.json": daily_rows(args.data_dir, journal, today - timedelta(days=DAILY_DAYS - 1), today, partial=today),
+        "activities.json": activity_rows(args.data_dir, today - timedelta(days=DAILY_DAYS - 1), today),
         "intraday.json": intraday_rows(args.data_dir, yesterday - timedelta(days=INTRADAY_DAYS - 1), yesterday + timedelta(days=1), tz),
     }
     for name, rows in outputs.items():
