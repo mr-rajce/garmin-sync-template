@@ -113,6 +113,38 @@ def test_one_failing_dataset_does_not_stop_others(tmp_path: Path):
     assert (tmp_path / "hrv/2030/2030-10-20.json").exists()
 
 
+def test_one_failing_dataset_is_a_warning_not_a_failure(tmp_path: Path):
+    class Http500(FakeClient):
+        def get_daily_food_logs(self, day):
+            raise RuntimeError("GET .../food/logs returned HTTP 500: {}")
+
+    report = sync.sync_all(Http500(), START, END, tmp_path)
+    assert report.failed == {"food_logs"}
+    assert report.exit_code() == 0
+    assert f"- ⚠️ food_logs {START}: GET .../food/logs returned HTTP 500: {{}}" in report.lines()
+    assert not any("❌" in line for line in report.lines())
+    assert (tmp_path / f"sleep/{START.year}/{START}.json").exists()
+
+
+def test_all_datasets_failing_fails_the_run(tmp_path: Path):
+    every = {
+        *(d.name for d in sync.datasets.RANGE_DATASETS),
+        *(d.name for d in sync.datasets.DAY_DATASETS),
+        "activities",
+    }
+    report = sync.sync_all(FakeClient(fail=every), START, END, tmp_path)
+    assert report.failed == every
+    assert report.exit_code() == 1
+    assert report.lines()[-1].startswith("- ❌")
+
+
+def test_bad_response_shape_alone_does_not_fail_the_run(tmp_path: Path):
+    # hydration has an unknown shape in FakeClient: reported, but the dataset did not fail.
+    report = sync.sync_all(FakeClient(), START, END, tmp_path)
+    assert report.errors and not report.failed
+    assert report.exit_code() == 0
+
+
 def test_activities_paginate_and_dedupe(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(sync.datasets, "ACTIVITY_PAGE_SIZE", 2)
     acts = [
