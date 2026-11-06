@@ -36,6 +36,20 @@ class Report:
     changed: dict[str, int] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    datasets: list[str] = field(default_factory=list)  # datasets the run tried to download
+    failed: set[str] = field(default_factory=set)  # datasets whose Garmin request failed
+
+    def fail(self, dataset: str, message: str) -> None:
+        """A request for a dataset failed (HTTP error etc.); the other datasets carry on."""
+        self.failed.add(dataset)
+        self.errors.append(message)
+
+    def all_failed(self) -> bool:
+        return bool(self.datasets) and set(self.datasets) <= self.failed
+
+    def exit_code(self) -> int:
+        """Fail only when no dataset worked; partial errors are warnings."""
+        return 1 if self.all_failed() else 0
 
     def count(self, dataset: str, changed: bool) -> None:
         self.changed.setdefault(dataset, 0)
@@ -45,7 +59,9 @@ class Report:
     def lines(self) -> list[str]:
         out = [f"- {name}: {n} files changed" for name, n in sorted(self.changed.items())]
         out += [f"- ⚠️ {w}" for w in self.warnings]
-        out += [f"- ❌ {e}" for e in self.errors]
+        out += [f"- ⚠️ {e}" for e in self.errors]
+        if self.all_failed():
+            out.append("- ❌ All datasets failed, nothing was downloaded.")
         return out
 
 
@@ -103,7 +119,7 @@ def sync_range_dataset(
         try:
             raw = dataset.fetch(client, first, last)
         except Exception as exc:  # one dataset must not take down the others
-            report.errors.append(f"{dataset.name} {first}..{last}: {exc}")
+            report.fail(dataset.name, f"{dataset.name} {first}..{last}: {exc}")
             return
         finally:
             pause()
@@ -150,7 +166,7 @@ def sync_day_dataset(
         try:
             raw = dataset.fetch(client, day)
         except Exception as exc:
-            report.errors.append(f"{dataset.name} {day}: {exc}")
+            report.fail(dataset.name, f"{dataset.name} {day}: {exc}")
             return
         finally:
             pause()
@@ -172,7 +188,7 @@ def sync_activities(
                 start=offset, limit=datasets.ACTIVITY_PAGE_SIZE, start_date=start, end_date=end
             )
         except Exception as exc:
-            report.errors.append(f"{datasets.ACTIVITIES} offset {offset}: {exc}")
+            report.fail(datasets.ACTIVITIES, f"{datasets.ACTIVITIES} offset {offset}: {exc}")
             return
         finally:
             pause()
@@ -204,6 +220,11 @@ def sync_all(
     pause: Callable[[], None] = lambda: None,
 ) -> Report:
     report = Report()
+    report.datasets = [
+        *(d.name for d in datasets.RANGE_DATASETS),
+        *(d.name for d in datasets.DAY_DATASETS),
+        datasets.ACTIVITIES,
+    ]
     for dataset in datasets.RANGE_DATASETS:
         sync_range_dataset(client, dataset, start, end, root, report, pause)
     for day_dataset in datasets.DAY_DATASETS:
@@ -293,8 +314,11 @@ def main(argv: list[str] | None = None) -> int:
 
     lines = [f"Range {start.isoformat()} – {today.isoformat()}", "", *report.lines()]
     print("\n".join(lines))
+    # Partial errors become ⚠️ annotations on the run; they do not fail the job.
+    for error in report.errors:
+        print(f"::warning::{error}")
     write_step_summary(lines)
-    return 1 if report.errors else 0
+    return report.exit_code()
 
 
 if __name__ == "__main__":

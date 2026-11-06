@@ -26,7 +26,7 @@ Garmin Personal API ──(GitHub Action every morning, last 7 days)──► da
 4. **Store the expiry date:** same page, **Variables** tab → **New repository variable**. Name `GARMIN_KEY_EXPIRES`, value the key's **expiry** date as `YYYY-MM-DD` (one year from today, not today). The sync starts warning 30 days before.
 5. **Time zone (optional):** variable `GARMIN_TZ`, e.g. `Europe/London`. Default `Europe/Prague`. It decides what "today" is.
 6. **First fill:** **Actions → Garmin sync → Run workflow**, set `days` to `365` (up to `1095` = 3 years). It takes a few minutes because of Garmin's rate limit.
-7. Done. It now runs every morning at 04:17 UTC. If something fails (for example an expired key), the run goes red and GitHub emails you.
+7. Done. It now runs every morning at 04:17 UTC. If only some datasets fail, the rest is saved, the errors show as ⚠️ in the run summary and the run stays green. It goes red (and GitHub emails you) only when the key is rejected or every dataset fails.
 
 **Check it:** open `reports/dashboard.md` in your repo and compare a few values with the Garmin Connect app (sleep score, resting heart rate). They should match exactly.
 

@@ -35,6 +35,8 @@ jobs:
 
       - run: python -m pytest -q
 
+      # One failing dataset = ⚠️ in the summary, the step passes. It fails only when
+      # the key is rejected or every dataset fails.
       - name: Download data from Garmin
         env:
           GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
