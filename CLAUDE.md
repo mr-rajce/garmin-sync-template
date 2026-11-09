@@ -13,6 +13,7 @@ Personal health and fitness data of one person (the owner of this repo) from Gar
 - `data/<dataset>/<year>/<YYYY-MM-DD>.json` = raw item from the Garmin Personal API for one (local) day. Datasets and endpoints: table in `README.md`.
 - `data/activities/<year>/<YYYY-MM-DD>-<activityId>.json` = summary of one activity.
 - Course of the day: `data/heart_rate/` (heart rate, timestamps in ms since epoch, UTC) and `data/body_battery_intraday/` (Body Battery every 15 min). Useful for questions like "what happened on 23 Oct between 14:00 and 16:00" or for matching against calendar meetings. Convert times to the owner's time zone (`GARMIN_TZ`).
+- Calendar (optional): `data/calendar/` (times and categories of meetings, section Optional: calendar).
 - A missing file = Garmin returned nothing for that day (watch not worn, not synced). **It is not zero.**
 - Take field names from the files, not from memory. Before computing anything, open one file of the dataset and look at its fields.
 - The last 7 days can still change (Garmin recalculates), today is usually incomplete. Evaluate "yesterday" and older.
@@ -71,10 +72,18 @@ Only when the owner asks for it (e.g. "include the HRV analysis" in the routine 
 
 ## Optional: calendar
 
-Only when the routine has a Google Calendar connector. Use it read-only, for the owner's calendar over the evaluated period and the 28 days before:
+Only when the routine (or the conversation) has a Google Calendar connector. From the calendar only **the time and category of each meeting** and daily summaries may go into the repo (and into the artifact, if it is on). **Never titles, descriptions, locations or attendees** (that is data about other people too). Use the calendar read-only; never write to it and never send Garmin data to it.
 
-- Write to the repo **only daily aggregates**: number of meetings, hours in meetings, end of the last meeting, meetings after 18:00, all-day events such as travel or holiday. **Never titles, descriptions, locations or attendees** (that is data about other people too).
-- Never write to or change the calendar. Never send Garmin data to the calendar or anywhere else.
+- Data: `data/calendar/<year>/<YYYY-MM-DD>.json` = `events` (`start`, `end`, `category`) and a day summary (`meetings`, `meeting_hours`, `last_meeting_end`, `meetings_after_18`). A day without a file = calendar not fetched for that day, not "no meetings".
+- Categories are computed by code (`garmin_sync/calendar.py`), not by the agent: `1:1` (one other person), `internal` (more people, all from the owner's company), `external` (at least one from outside), `own` (no other people), `focus`, `out of office`, `all-day`. Meetings = the first three.
+- **How to fill it** (routine with the connector, or when the owner asks): list the events of the last 7 days and today (local time). From each, copy **only** a compact record into a file outside the repo (scratch folder):
+  `{"start", "end", "all_day", "others", "external", "group", "declined", "free", "type"}`
+  - `others` = number of other people, without the owner and without rooms (`resource: true`); the organizer counts when not among the attendees;
+  - `external` = at least one of them outside the owner's company e-mail domain; `group` = an invited address is a group (team, whole company);
+  - `declined` = the owner declined; `free` = `transparency: transparent` or `availability: AVAILABILITY_FREE`; `type` = `eventType`;
+  - all-day: `start`/`end` as a date and `all_day: true`.
+  Then `python -m garmin_sync.calendar --in <file> --from <first day> --to <last day>`, commit and push. The script rejects input with any other field.
+- In the HRV analysis, compare the calendar summaries before the best and worst quarter of nights (e.g. "before nights with HRV below 45 ms: median 5.5 h of meetings, the last one ended at 19:00; above 60 ms: 2 h, 16:30").
 - Without the connector or without access, skip this and say why.
 
 ## Daily check
@@ -101,17 +110,17 @@ Artifact exception: off
 
 When on, it is the only exception to section Privacy: a **private** Claude artifact with the dashboard (page `artifact/index.html`, Dashboard type, data from `python -m garmin_sync.export`):
 - only when the owner **explicitly asks** in the conversation, never automatically or from a routine without their instruction;
-- only **daily summaries, the course of the day and journal tags**; never raw files, journal text, GPS or activity names;
+- only **daily summaries, the course of the day, journal tags** and, if the calendar is used, **meetings as time and category**; never raw files, journal text, GPS, activity names, or meeting titles or attendees;
 - the artifact stays private: **never share or publish it**; update the same one (same URL) and note its URL here.
 
 Artifact URL: (none yet)
 
 **Build it** (once, when the owner asks "build my Garmin dashboard artifact" and the exception is on):
 
-1. `python -m garmin_sync.export --out <scratch folder>`: writes `daily.json` (one year up to today; for today only the night metrics: sleep, HRV, Body Battery max), `activities.json` and `intraday.json` (last 60 days). Never upload anything else.
+1. `python -m garmin_sync.export --out <scratch folder>`: writes `daily.json` (one year up to today; for today only the night metrics: sleep, HRV, Body Battery max; with meeting load per day when the calendar is filled), `activities.json`, `calendar.json` and `intraday.json` (last 60 days). Never upload anything else.
 2. Create an artifact from the **Dashboard** artifact type (Artifact tool, `action: "quickstart"`, then publish with the Dashboard `type_url`), titled "Garmin journal". Follow the type's own instructions for the details below.
-3. Upload the three files as assets of that artifact.
-4. In its store write `dash/meta` `{title}`, and three file datasets with exactly these ids, since the page reads them: `datasets/daily`, `datasets/activities`, `datasets/intraday` (`source: {kind: "file", url, name}`, `updated: {at, by}`, a `title` and `description` each).
+3. Upload the four files as assets of that artifact.
+4. In its store write `dash/meta` `{title}`, and four file datasets with exactly these ids, since the page reads them: `datasets/daily`, `datasets/activities`, `datasets/calendar`, `datasets/intraday` (`source: {kind: "file", url, name}`, `updated: {at, by}`, a `title` and `description` each).
 5. Write the page: `files/index.html` = the content of `artifact/index.html` from this repo, unchanged.
 6. Write the artifact's URL into "Artifact URL" above, commit and push.
 
@@ -121,7 +130,7 @@ Artifact URL: (none yet)
 2. Update the matching `datasets/<id>` documents (`source.url`, `source.name`, `updated`). Leave `files/index.html` alone unless the owner asks for a page change.
 3. Delete the old asset once nothing refers to it.
 
-The page shows: yesterday against the 28-day median, overnight HRV (90 days or a year) with journal tags, the other metrics as small charts, weeks and months (medians, days with data, tags), the course of a chosen day (heart rate and Body Battery with activities), and activities of the last 30 days.
+The page shows: the latest values against the 28-day median; a bar to switch the **period** (7, 14, 30, 90 days, a year) and **grouping** (by day, week, month) for the whole page; a **period summary** (median against the same-length period before, min, max, days with data, journal tags); overnight HRV with a 7-day average as the trend and a **What happened** strip below it (journal tags, activities, hours in meetings); the other metrics as small charts; the **course of a chosen day** (heart rate and Body Battery with activities and meetings) with a **What came before** panel (the night against the median, the day before and the day itself); and activities in the period.
 
 ## Development
 

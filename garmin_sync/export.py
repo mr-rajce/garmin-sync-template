@@ -2,7 +2,8 @@
 
 Usage:  python -m garmin_sync.export --out <folder>
 Writes only what that section allows: daily summaries, the course of the day
-(heart rate, Body Battery) and journal tags. Never raw files, journal text, GPS or activity names.
+(heart rate, Body Battery), journal tags and meetings as time and category. Never raw
+files, journal text, GPS, activity names, or meeting titles or attendees.
 """
 
 from __future__ import annotations
@@ -42,7 +43,25 @@ def daily_rows(
                 value = None
             row[m.key] = round(value, m.decimals) if value is not None else None
         row["tags"] = ", ".join(journal.tags(day))
+        # Meeting load: a day without a calendar file is unknown (None), not zero.
+        cal = data_dir / "calendar" / str(day.year) / f"{day.isoformat()}.json"
+        summary = json.loads(cal.read_text(encoding="utf-8")) if cal.exists() else {}
+        row["meetings"] = summary.get("meetings")
+        row["meeting_hours"] = summary.get("meeting_hours")
+        row["last_meeting_end"] = summary.get("last_meeting_end")
         rows.append(row)
+    return rows
+
+
+def calendar_rows(data_dir: Path, start: date, end: date) -> list[dict[str, Any]]:
+    """Meetings per day: date, start, end, category (all-day without times). Nothing else."""
+    rows = []
+    for day in store.date_range(start, end):
+        cal = data_dir / "calendar" / str(day.year) / f"{day.isoformat()}.json"
+        if not cal.exists():
+            continue
+        for e in json.loads(cal.read_text(encoding="utf-8")).get("events", []):
+            rows.append({"date": day.isoformat(), "start": e.get("start"), "end": e.get("end"), "category": e.get("category")})
     return rows
 
 
@@ -108,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     outputs = {
         "daily.json": daily_rows(args.data_dir, journal, today - timedelta(days=DAILY_DAYS - 1), today, partial=today),
         "activities.json": activity_rows(args.data_dir, today - timedelta(days=DAILY_DAYS - 1), today),
+        "calendar.json": calendar_rows(args.data_dir, yesterday - timedelta(days=INTRADAY_DAYS - 1), today),
         "intraday.json": intraday_rows(args.data_dir, yesterday - timedelta(days=INTRADAY_DAYS - 1), yesterday + timedelta(days=1), tz),
     }
     for name, rows in outputs.items():

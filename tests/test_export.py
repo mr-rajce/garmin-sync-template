@@ -19,7 +19,8 @@ def test_daily_rows_missing_is_none_and_tags_without_text(tmp_path: Path):
     j = journal.Journal(entries={DAY: journal.Entry(["party", "alcohol"], "private note")})
     rows = export.daily_rows(tmp_path, j, DAY, DAY)
     assert rows == [{"date": "2030-10-23", "sleep_score": None, "sleep_hours": None, "hrv": 39, "resting_hr": None,
-                     "body_battery": None, "stress": None, "steps": None, "tags": "party, alcohol"}]
+                     "body_battery": None, "stress": None, "steps": None, "tags": "party, alcohol",
+                     "meetings": None, "meeting_hours": None, "last_meeting_end": None}]
     assert "private" not in json.dumps(rows, ensure_ascii=False)
 
 
@@ -57,3 +58,15 @@ def test_today_has_only_night_metrics(tmp_path: Path):
     assert (row["resting_hr"], row["stress"], row["steps"]) == (None, None, None)
     [full] = export.daily_rows(tmp_path, journal.Journal(), DAY, DAY)
     assert full["steps"] == 800
+
+
+def test_calendar_in_daily_rows_and_events_without_names(tmp_path: Path):
+    store.write_if_changed(store.day_path(tmp_path, "calendar", DAY.isoformat()), {
+        "date": DAY.isoformat(), "meetings": 2, "meeting_hours": 1.5, "last_meeting_end": "17:30", "meetings_after_18": 0,
+        "events": [{"start": "09:00", "end": "10:00", "category": "1:1"}, {"start": "16:30", "end": "17:30", "category": "internal"}]})
+    [row] = export.daily_rows(tmp_path, journal.Journal(), DAY, DAY)
+    assert (row["meetings"], row["meeting_hours"], row["last_meeting_end"]) == (2, 1.5, "17:30")
+    assert export.calendar_rows(tmp_path, DAY, DAY) == [
+        {"date": DAY.isoformat(), "start": "09:00", "end": "10:00", "category": "1:1"},
+        {"date": DAY.isoformat(), "start": "16:30", "end": "17:30", "category": "internal"},
+    ]

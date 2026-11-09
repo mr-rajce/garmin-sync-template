@@ -41,6 +41,19 @@
 .gd-table td.num, .gd-table th.num { text-align: right; }
 .gd-empty { display: flex; align-items: center; justify-content: center; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 [data-dash-source-state=empty] { color: transparent; }
+.gd-controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 3; display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: center; background: var(--color-bg); padding-block: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); }
+.gd-ctl { display: flex; gap: var(--cds-gap-xs); align-items: center; }
+.gd-ctl-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.gd-ctl-range { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.gd-table td.is-good { color: var(--color-ok); }
+.gd-table td.is-bad { color: var(--color-bad); }
+.gd-table td.is-name { white-space: nowrap; }
+.gd-lane { position: relative; min-height: 70px; }
+.gd-before { display: grid; gap: var(--cds-gap-sm); grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); font-size: var(--cds-font-size-caption); }
+.gd-before h4 { margin: 0 0 var(--cds-gap-xs); font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); }
+.gd-before ul { margin: 0; padding-left: 1.1em; display: grid; gap: 2px; }
+.gd-before .is-good { color: var(--color-ok); }
+.gd-before .is-bad { color: var(--color-bad); }
 [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
 </style>
 
@@ -52,48 +65,60 @@
 
   <section class="gd-tiles" id="yesterday" aria-label="Latest values against the 28-day median"></section>
 
-  <section class="gd-card" id="hrv">
-    <div class="gd-card-head">
-      <h2 class="gd-card-title">Overnight HRV</h2>
-      <div class="gd-seg" role="group" aria-label="Period">
-        <button type="button" id="range-90" data-days="90" aria-pressed="true">90 days</button>
-        <button type="button" id="range-365" data-days="365" aria-pressed="false">Year</button>
+  <section class="gd-controls" id="controls" aria-label="Period and grouping">
+    <div class="gd-ctl">
+      <span class="gd-ctl-label">Period</span>
+      <div class="gd-seg" role="group" aria-label="Period" id="ctl-days">
+        <button type="button" data-days="7" aria-pressed="false">7 days</button>
+        <button type="button" data-days="14" aria-pressed="true">14 days</button>
+        <button type="button" data-days="30" aria-pressed="false">30 days</button>
+        <button type="button" data-days="90" aria-pressed="false">90 days</button>
+        <button type="button" data-days="365" aria-pressed="false">Year</button>
       </div>
     </div>
-    <p class="gd-note">Blue: overnight average. Grey dashed: median of the previous 28 days. A dot at the top = a journal tag. A gap = a night without data, not zero. Click to open the day.</p>
-    <div class="gd-chart is-main" id="chart-hrv" data-source="daily baseline"></div>
+    <div class="gd-ctl">
+      <span class="gd-ctl-label">By</span>
+      <div class="gd-seg" role="group" aria-label="Group by" id="ctl-agg">
+        <button type="button" data-agg="day" aria-pressed="true">day</button>
+        <button type="button" data-agg="week" aria-pressed="false">week</button>
+        <button type="button" data-agg="month" aria-pressed="false">month</button>
+      </div>
+    </div>
+    <span class="gd-ctl-range" id="ctl-range"></span>
   </section>
 
-  <section id="metrics" class="gd-grid"></section>
-
-  <section class="gd-card" id="periods">
-    <div class="gd-card-head">
-      <h2 class="gd-card-title">Weeks and months</h2>
-      <div class="gd-seg" role="group" aria-label="Aggregation">
-        <button type="button" id="agg-week" data-kind="week" aria-pressed="true">Weeks</button>
-        <button type="button" id="agg-month" data-kind="month" aria-pressed="false">Months</button>
-      </div>
-    </div>
-    <p class="gd-note">Median per week (Monday–Sunday) or calendar month. Bars: HRV. The last period is usually incomplete; the table shows how many days had data.</p>
-    <div class="gd-chart" id="chart-periods" data-source="periods"></div>
+  <section class="gd-card" id="summary">
+    <h2 class="gd-card-title">Period summary</h2>
+    <p class="gd-note">Median for the chosen period against the same-length period before it, the lowest and highest day and the number of days with data. Change: green is better, red is worse.</p>
     <div class="gd-tablewrap">
-      <table class="gd-table" id="table-periods" data-source="periods" data-row-key="kind,period">
+      <table class="gd-table" id="table-summary" data-source="summary" data-row-key="window,metric">
         <thead><tr>
-          <th data-field="period">Period</th>
-          <th class="num" data-field="hrv">HRV</th>
-          <th class="num" data-field="sleep_score">Sleep score</th>
-          <th class="num" data-field="sleep_hours">Sleep h</th>
-          <th class="num" data-field="resting_hr">Resting HR</th>
-          <th class="num" data-field="body_battery">BB max</th>
-          <th class="num" data-field="stress">Stress</th>
-          <th class="num" data-field="steps">Steps</th>
+          <th data-field="metric">Metric</th>
+          <th class="num" data-field="median">Median</th>
+          <th class="num" data-field="previous">Before</th>
+          <th class="num" data-field="diff">Change</th>
+          <th class="num" data-field="min">Min</th>
+          <th class="num" data-field="max">Max</th>
           <th class="num" data-field="days">Days</th>
-          <th data-field="tags">Journal</th>
         </tr></thead>
         <tbody></tbody>
       </table>
     </div>
+    <p class="gd-note" id="summary-tags" data-source="tagsummary"></p>
   </section>
+
+  <section class="gd-card" id="hrv">
+    <div class="gd-card-head">
+      <h2 class="gd-card-title">Overnight HRV</h2>
+    </div>
+    <p class="gd-note" id="hrv-note">Dots: the night\'s value. Thick line: 7-day average (trend). Grey dashed: median of the previous 28 days. Red dot at the top = a journal tag. A gap = a night without data, not zero. Click to open the day.</p>
+    <div class="gd-chart is-main" id="chart-hrv" data-source="daily baseline rolling periods"></div>
+    <h3 class="gd-card-title" id="events-title">What happened</h3>
+    <p class="gd-note">Rows: journal tags, activities, hours in meetings (bar height). Hover for details, click to open the day.</p>
+    <div class="gd-lane" id="lane-events" data-source="daily activities"></div>
+  </section>
+
+  <section id="metrics" class="gd-grid"></section>
 
   <section class="gd-card" id="day">
     <div class="gd-card-head">
@@ -104,14 +129,15 @@
         <button type="button" id="day-next" aria-label="Next day">→</button>
       </div>
     </div>
-    <p class="gd-note">Heart rate (blue) and Body Battery (green) through the day, activities in grey. Available for the last 60 days.</p>
+    <p class="gd-note">Heart rate (blue) and Body Battery (green) through the day, activities in grey, meetings as a strip at the bottom by category. Available for the last 60 days; meetings only for days with calendar data.</p>
     <div class="gd-daytags" id="day-tags"></div>
-    <div class="gd-chart is-day" id="chart-day-hr" data-source="intraday activities"></div>
-    <div class="gd-chart is-day" id="chart-day-bb" data-source="intraday activities"></div>
+    <div class="gd-before" id="day-before" data-source="daily baseline calendar activities"></div>
+    <div class="gd-chart is-day" id="chart-day-hr" data-source="intraday activities calendar"></div>
+    <div class="gd-chart is-day" id="chart-day-bb" data-source="intraday activities calendar"></div>
   </section>
 
   <section class="gd-card" id="activities">
-    <h2 class="gd-card-title">Activities, last 30 days</h2>
+    <h2 class="gd-card-title">Activities in the period</h2>
     <div class="gd-tablewrap">
       <table class="gd-table" id="table-activities" data-source="activities" data-row-key="date,start">
         <thead><tr>
@@ -140,7 +166,7 @@ window.GD = (() => {
   const parseDay = (s) => new Date(s + 'T00:00:00Z');
   const czDay = (s) => d3.utcFormat('%b %-d')(parseDay(s));
   const czMonth = (d) => d3.utcFormat('%b %-d')(d);
-  const state = { days: 90, day: null };
+  const state = { days: 14, agg: 'day', day: null };
   return { METRICS, fmt, parseDay, czDay, czMonth, state };
 })();
 </script>
@@ -159,6 +185,24 @@ dash.calc('baseline', {
       for (const k of keys) {
         const vals = daily.slice(Math.max(0, i - 28), i).map((r) => r[k]).filter((v) => v != null);
         out[k] = vals.length >= 7 ? median(vals) : null;
+      }
+      return out;
+    });
+  },
+});
+
+// 7-day rolling average (the day and the 6 before it, at least 4 days with data), for every metric.
+dash.calc('rolling', {
+  title: '7-day rolling average',
+  description: 'For each day and metric, the average of that day and the 6 days before it, when at least 4 days have data.',
+  inputs: ['daily'],
+  fn: (daily) => {
+    const keys = ['hrv', 'sleep_score', 'sleep_hours', 'resting_hr', 'body_battery', 'stress', 'steps'];
+    return daily.map((row, i) => {
+      const out = { date: row.date };
+      for (const k of keys) {
+        const vals = daily.slice(Math.max(0, i - 6), i + 1).map((r) => r[k]).filter((v) => v != null);
+        out[k] = vals.length >= 4 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
       }
       return out;
     });
@@ -224,12 +268,60 @@ dash.calc('periods', {
     });
   },
 });
+
+// Summary for each offered period (7, 14, 30, 90, 365 days up to the last day) and the same-length period before it.
+dash.calc('summary', {
+  title: 'Period summary',
+  description: 'For periods of 7, 14, 30, 90 and 365 days ending on the last day: median, minimum, maximum and days with data of each metric, and the median of the same-length period before it (when at least a quarter of its days have data).',
+  inputs: ['daily'],
+  fn: (daily) => {
+    const windows = [7, 14, 30, 90, 365];
+    const keys = [['hrv', 0], ['sleep_score', 0], ['sleep_hours', 1], ['resting_hr', 0], ['body_battery', 0], ['stress', 0], ['steps', 0]];
+    const median = (xs) => { const s = [...xs].sort((a, b) => a - b); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+    const round = (v, d) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
+    const n = daily.length;
+    const out = [];
+    for (const w of windows) {
+      const cur = daily.slice(Math.max(0, n - w));
+      const prev = daily.slice(Math.max(0, n - 2 * w), Math.max(0, n - w));
+      for (const [k, d] of keys) {
+        const vals = cur.map((r) => r[k]).filter((v) => v != null);
+        const pvals = prev.map((r) => r[k]).filter((v) => v != null);
+        const med = vals.length ? round(median(vals), d) : null;
+        const previous = pvals.length >= Math.max(2, Math.ceil(w / 4)) ? round(median(pvals), d) : null;
+        out.push({
+          window: w, metric: k, from: cur[0]?.date ?? null, to: cur[cur.length - 1]?.date ?? null,
+          median: med, previous, diff: med != null && previous != null ? round(med - previous, d) : null,
+          min: vals.length ? round(Math.min(...vals), d) : null, max: vals.length ? round(Math.max(...vals), d) : null,
+          days: vals.length,
+        });
+      }
+    }
+    return out;
+  },
+});
+
+// Journal tags in each offered period: how many days had each tag.
+dash.calc('tagsummary', {
+  title: 'Tags in the period',
+  description: 'For periods of 7, 14, 30, 90 and 365 days ending on the last day, the number of days with each journal tag.',
+  inputs: ['daily'],
+  fn: (daily) => {
+    const out = [];
+    for (const w of [7, 14, 30, 90, 365]) {
+      const counts = new Map();
+      for (const r of daily.slice(Math.max(0, daily.length - w))) for (const t of (r.tags ? r.tags.split(', ') : [])) counts.set(t, (counts.get(t) || 0) + 1);
+      for (const [tag, count] of counts) out.push({ window: w, tag, count });
+    }
+    return out;
+  },
+});
 </script>
 
 <script>
 (() => {
   const { METRICS, fmt, czDay } = window.GD;
-  const tiles = document.getElementById('vcera');
+  const tiles = document.getElementById('yesterday');
   const shown = METRICS.filter((m) => m.key !== 'stress');
   for (const m of shown) {
     const tile = document.createElement('div');
@@ -298,8 +390,20 @@ window.GD.lineChart = (el, metric, opts) => {
   }
   el.classList.remove('dash-skeleton');
   const rows = daily.data.slice(-state.days);
-  const baseBy = new Map(base.data.map((r) => [r.date, r[metric.key]]));
-  const pts = rows.map((r) => ({ date: r.date, t: parseDay(r.date), v: r[metric.key], m: baseBy.get(r.date) ?? null, tags: r.tags || '' }));
+  const from = rows.length ? rows[0].date : null;
+  let pts;
+  if (state.agg === 'day') {
+    const baseBy = new Map(base.data.map((r) => [r.date, r[metric.key]]));
+    const roll = dash.data('rolling');
+    const rollBy = new Map((roll.status === 'ok' ? roll.data : []).map((r) => [r.date, r[metric.key]]));
+    pts = rows.map((r) => ({ date: r.date, t: parseDay(r.date), v: r[metric.key], m: baseBy.get(r.date) ?? null, a: rollBy.get(r.date) ?? null, tags: r.tags || '' }));
+  } else {
+    const per = dash.data('periods');
+    if (per.status !== 'ok') { el.classList.add('dash-skeleton'); return; }
+    pts = per.data.filter((r) => r.kind === state.agg && r.to >= from)
+      .sort((a, b) => a.period.localeCompare(b.period))
+      .map((r) => ({ date: r.from < from ? from : r.from, t: parseDay(r.from < from ? from : r.from), v: r[metric.key], m: null, tags: r.tags || '', period: r.period, days: r.days }));
+  }
   const width = el.clientWidth || 600;
   const height = opts.height;
   const vals = pts.flatMap((p) => [p.v, p.m]).filter((v) => v != null);
@@ -324,15 +428,20 @@ window.GD.lineChart = (el, metric, opts) => {
     grid.append('line').attr('x1', left).attr('x2', width - 8).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
     grid.append('text').attr('x', left - 6).attr('y', y(t) + 4).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(fmt(t, metric.decimals));
   }
-  const months = d3.utcMonth.range(d3.utcMonth.ceil(x.domain()[0]), x.domain()[1]);
-  const step = Math.max(1, Math.ceil(months.length / Math.max(1, Math.floor((width - left) / 60))));
-  months.filter((_, i) => i % step === 0).forEach((m) => {
+  const spanDays = (x.domain()[1] - x.domain()[0]) / 864e5;
+  const ticks = spanDays <= 45
+    ? d3.utcDay.range(x.domain()[0], d3.utcDay.offset(x.domain()[1], 1))
+    : d3.utcMonth.range(d3.utcMonth.ceil(x.domain()[0]), x.domain()[1]);
+  const step = Math.max(1, Math.ceil(ticks.length / Math.max(1, Math.floor((width - left) / 56))));
+  ticks.filter((_, i) => i % step === 0).forEach((m) => {
     svg.append('text').attr('x', x(m)).attr('y', height - 6).attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(czMonth(m));
   });
   const line = (key) => d3.line().defined((p) => p[key] != null).x((p) => x(p.t)).y((p) => y(p[key]));
   svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', 'var(--cds-chart-muted)').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3').attr('d', line('m'));
-  svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('d', line('v'));
-  if (state.days <= 120) {
+  const daily7 = state.agg === 'day';
+  svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-opacity', daily7 ? 0.35 : 1).attr('stroke-width', daily7 ? 1.5 : 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('d', line('v'));
+  if (daily7) svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', dash.colors[0]).attr('stroke-width', 2.5).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round').attr('d', line('a'));
+  if (state.days <= 120 || state.agg !== 'day') {
     svg.append('g').selectAll('circle').data(pts.filter((p) => p.v != null)).join('circle')
       .attr('cx', (p) => x(p.t)).attr('cy', (p) => y(p.v)).attr('r', 2).attr('fill', dash.colors[0]);
   }
@@ -353,9 +462,14 @@ window.GD.lineChart = (el, metric, opts) => {
       if (!p) return;
       hoverDot.attr('visibility', p.v != null ? 'visible' : 'hidden').attr('cx', x(p.t)).attr('cy', p.v != null ? y(p.v) : 0);
       tip.replaceChildren();
-      const d = document.createElement('div'); d.className = 'gd-tip-date'; d.textContent = czDay(p.date); tip.appendChild(d);
-      const v = document.createElement('div'); v.textContent = `${metric.label}: ${fmt(p.v, metric.decimals)} ${metric.unit}`.trim(); tip.appendChild(v);
-      const m = document.createElement('div'); m.textContent = `28-day median: ${fmt(p.m, metric.decimals)}`; tip.appendChild(m);
+      const d = document.createElement('div'); d.className = 'gd-tip-date';
+      d.textContent = p.period ? `${state.agg === 'week' ? 'Week from' : 'Month from'} ${czDay(p.date)} (${p.days} days with data)` : czDay(p.date);
+      tip.appendChild(d);
+      const v = document.createElement('div'); v.textContent = `${metric.label}${p.period ? ' (median)' : ''}: ${fmt(p.v, metric.decimals)} ${metric.unit}`.trim(); tip.appendChild(v);
+      if (!p.period) {
+        const a = document.createElement('div'); a.textContent = `7-day average: ${fmt(p.a, metric.decimals)}`; tip.appendChild(a);
+        const m = document.createElement('div'); m.textContent = `28-day median: ${fmt(p.m, metric.decimals)}`; tip.appendChild(m);
+      }
       if (p.tags) { const t = document.createElement('div'); t.textContent = `Journal: ${p.tags}`; tip.appendChild(t); }
       tip.hidden = false;
       const scale = el.clientWidth / width;
@@ -364,14 +478,14 @@ window.GD.lineChart = (el, metric, opts) => {
       tip.style.top = '0px';
     })
     .on('mouseleave', () => { tip.hidden = true; hoverDot.attr('visibility', 'hidden'); })
-    .on('click', (event) => { const p = nearest(event); if (p) window.GD.openDay(p.date); });
+    .on('click', (event) => { const p = nearest(event); if (p && !p.period) window.GD.openDay(p.date); });
 };
 </script>
 
 <script>
 (() => {
   const { METRICS, state } = window.GD;
-  const grid = document.getElementById('metriky');
+  const grid = document.getElementById('metrics');
   const small = METRICS.filter((m) => m.key !== 'hrv');
   for (const m of small) {
     const card = document.createElement('div');
@@ -383,17 +497,11 @@ window.GD.lineChart = (el, metric, opts) => {
     const chart = document.createElement('div');
     chart.className = 'gd-chart';
     chart.id = `chart-${m.key}`;
-    chart.dataset.source = 'daily baseline';
+    chart.dataset.source = 'daily baseline rolling periods';
     card.append(h, chart);
     grid.appendChild(card);
   }
   const hrv = METRICS.find((m) => m.key === 'hrv');
-  const buttons = document.querySelectorAll('#hrv .gd-seg button');
-  buttons.forEach((b) => b.addEventListener('click', () => {
-    state.days = Number(b.dataset.days);
-    buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-    window.GD.drawDaily();
-  }));
   window.GD.drawDaily = () => {
     window.GD.lineChart(document.getElementById('chart-hrv'), hrv, { height: 260 });
     for (const m of small) window.GD.lineChart(document.getElementById(`chart-${m.key}`), m, { height: 180 });
@@ -413,6 +521,7 @@ window.GD.lineChart = (el, metric, opts) => {
     input.value = day;
     window.GD.drawDay();
     window.GD.drawDaily();
+    if (window.GD.drawLane) window.GD.drawLane();
     document.getElementById('day').scrollIntoView({ behavior: 'smooth', block: 'start' });
     dash.setLink('day');
   };
@@ -420,7 +529,8 @@ window.GD.lineChart = (el, metric, opts) => {
   document.getElementById('day-prev').addEventListener('click', () => { if (state.day) window.GD.openDay(shift(state.day, -1)); });
   document.getElementById('day-next').addEventListener('click', () => { if (state.day) window.GD.openDay(shift(state.day, 1)); });
 
-  const dayChart = (el, rows, acts, opts) => {
+  const MEETING = new Set(['1:1', 'internal', 'external']);
+  const dayChart = (el, rows, acts, meetings, opts) => {
     el.replaceChildren();
     if (!rows.length) {
       const e = document.createElement('div');
@@ -447,6 +557,11 @@ window.GD.lineChart = (el, metric, opts) => {
       const e = new Date(s.getTime() + a.duration_min * 60e3);
       svg.append('rect').attr('x', x(s)).attr('y', 10).attr('width', Math.max(2, x(e) - x(s))).attr('height', height - 34).attr('fill', 'var(--cds-chart-grid)');
       svg.append('text').attr('x', x(s) + 4).attr('y', 22).attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(a.type || 'activity');
+    }
+    const blocks = meetings.filter((m) => m.start && m.end).map((m) => ({ ...m, s: new Date(`${m.date}T${m.start}:00`), e: new Date(`${m.date}T${m.end}:00`) }));
+    for (const b of blocks) {
+      svg.append('rect').attr('x', x(b.s)).attr('y', height - 30).attr('width', Math.max(2, x(b.e) - x(b.s))).attr('height', 5).attr('rx', 2)
+        .attr('fill', MEETING.has(b.category) ? dash.colors[2] : 'var(--cds-chart-muted)');
     }
     for (const t of ticks) {
       svg.append('line').attr('x1', left).attr('x2', width - 8).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
@@ -475,6 +590,9 @@ window.GD.lineChart = (el, metric, opts) => {
         tip.replaceChildren();
         const d = document.createElement('div'); d.className = 'gd-tip-date'; d.textContent = p.time.slice(11, 16); tip.appendChild(d);
         const v = document.createElement('div'); v.textContent = `${opts.label}: ${fmt(p.v)}${opts.unit ? ' ' + opts.unit : ''}`; tip.appendChild(v);
+        for (const b of blocks.filter((b) => b.s <= p.t && p.t < b.e)) {
+          const m = document.createElement('div'); m.textContent = `${MEETING.has(b.category) ? 'Meeting' : 'In calendar'}: ${b.category} ${b.start}–${b.end}`; tip.appendChild(m);
+        }
         tip.hidden = false;
         const px = x(p.t) * (el.clientWidth / width);
         tip.style.left = `${Math.min(Math.max(0, px + 10), el.clientWidth - tip.offsetWidth)}px`;
@@ -516,103 +634,131 @@ window.GD.lineChart = (el, metric, opts) => {
     for (const t of (row && row.tags ? row.tags.split(', ') : [])) {
       const c = document.createElement('span'); c.className = 'gd-chip'; c.textContent = t; tagsEl.appendChild(c);
     }
-    dayChart(hrEl, rows.filter((r) => r.metric === 'hr'), dayActs, { label: 'Heart rate', unit: 'bpm', color: dash.colors[0], gapMinutes: 10, empty: 'No heart rate for this day' });
-    dayChart(bbEl, rows.filter((r) => r.metric === 'body_battery'), dayActs, { label: 'Body Battery', unit: '', color: dash.colors[1], gapMinutes: 60, domain: [0, 100], empty: 'No Body Battery for this day' });
+    const cal = dash.data('calendar');
+    const dayCal = cal.status === 'ok' ? cal.data.filter((c) => c.date === state.day) : [];
+    window.GD.drawBefore();
+    dayChart(hrEl, rows.filter((r) => r.metric === 'hr'), dayActs, dayCal, { label: 'Heart rate', unit: 'bpm', color: dash.colors[0], gapMinutes: 10, empty: 'No heart rate for this day' });
+    dayChart(bbEl, rows.filter((r) => r.metric === 'body_battery'), dayActs, dayCal, { label: 'Body Battery', unit: '', color: dash.colors[1], gapMinutes: 60, domain: [0, 100], empty: 'No Body Battery for this day' });
   };
   dash.onData(() => window.GD.drawDay());
 })();
 </script>
 
 <script>
+// The "What happened" strip under HRV and the "What came before" panel in the day view.
 (() => {
-  const { fmt, parseDay } = window.GD;
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const SHOW = { week: 26, month: 12 };
-  let kind = 'week';
-  const label = (r) => {
-    const d = parseDay(r.from);
-    return r.kind === 'week' ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}` : `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`;
-  };
-  const buttons = document.querySelectorAll('#periods .gd-seg button');
-  buttons.forEach((b) => b.addEventListener('click', () => {
-    kind = b.dataset.kind;
-    buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-    draw();
-  }));
-  const chartEl = document.getElementById('chart-periods');
-  const body = document.querySelector('#table-periods tbody');
+  const { METRICS, fmt, czDay, parseDay, state } = window.GD;
+  const lane = document.getElementById('lane-events');
+  const before = document.getElementById('day-before');
+  const shift = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
-  const drawChart = (rows) => {
-    chartEl.replaceChildren();
-    const pts = rows.slice(-SHOW[kind]);
-    if (!pts.some((r) => r.hrv != null)) {
-      const e = document.createElement('div'); e.className = 'gd-empty'; e.textContent = 'No data for this period'; chartEl.appendChild(e);
-      return;
-    }
-    const width = chartEl.clientWidth || 600;
-    const height = 180;
-    const y = d3.scaleLinear([0, d3.max(pts, (r) => r.hrv) * 1.1], [height - 24, 14]).nice(4);
-    const svg = d3.select(chartEl).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${width} ${height}`).attr('height', height);
-    const ticks = y.ticks(4);
-    const probe = svg.append('text').attr('font-size', 11).text(fmt(ticks[ticks.length - 1]));
-    const left = Math.ceil(probe.node().getComputedTextLength()) + 10;
-    probe.remove();
-    const x = d3.scaleBand(pts.map((r) => r.period), [left, width - 8]).padding(0.25);
-    for (const t of ticks) {
-      svg.append('line').attr('x1', left).attr('x2', width - 8).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--cds-chart-grid)');
-      svg.append('text').attr('x', left - 6).attr('y', y(t) + 4).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(fmt(t));
-    }
-    const every = Math.max(1, Math.ceil(pts.length / Math.max(1, Math.floor((width - left) / 48))));
-    pts.forEach((r, i) => {
-      if (i % every) return;
-      svg.append('text').attr('x', x(r.period) + x.bandwidth() / 2).attr('y', height - 6).attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(label(r));
+  window.GD.drawLane = () => {
+    lane.replaceChildren();
+    const daily = dash.data('daily');
+    const acts = dash.data('activities');
+    if (daily.status !== 'ok' || acts.status !== 'ok') { lane.classList.add('dash-skeleton'); return; }
+    lane.classList.remove('dash-skeleton');
+    const rows = daily.data.slice(-state.days);
+    if (!rows.length) return;
+    const actBy = d3.group(acts.data, (a) => a.date);
+    const width = lane.clientWidth || 600;
+    const height = 70;
+    const left = 70;
+    const x = d3.scaleUtc([parseDay(rows[0].date), d3.utcDay.offset(parseDay(rows[rows.length - 1].date), 1)], [left, width - 8]);
+    const bw = Math.max(2, (x.range()[1] - x.range()[0]) / rows.length - 1);
+    const maxH = Math.max(1, d3.max(rows, (r) => r.meeting_hours ?? 0));
+    const svg = d3.select(lane).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${width} ${height}`).attr('height', height);
+    [['Journal', 10], ['Activities', 28], ['Meetings', 56]].forEach(([t, yy]) => {
+      svg.append('text').attr('x', 0).attr('y', yy + 4).attr('font-size', 11).attr('fill', 'var(--color-fg-muted)').text(t);
     });
-    svg.append('g').selectAll('rect').data(pts.filter((r) => r.hrv != null)).join('rect')
-      .attr('x', (r) => x(r.period)).attr('width', x.bandwidth()).attr('y', (r) => y(r.hrv)).attr('height', (r) => y(0) - y(r.hrv))
-      .attr('rx', 4).attr('fill', dash.colors[0]);
-    svg.append('g').selectAll('circle').data(pts.filter((r) => r.tags)).join('circle')
-      .attr('cx', (r) => x(r.period) + x.bandwidth() / 2).attr('cy', 6).attr('r', 3).attr('fill', 'var(--cds-chart-status-critical)');
+    for (const r of rows) {
+      const cx = x(parseDay(r.date)) + bw / 2;
+      if (r.tags) svg.append('circle').attr('cx', cx).attr('cy', 10).attr('r', 3.5).attr('fill', 'var(--cds-chart-status-critical)');
+      if (actBy.has(r.date)) svg.append('rect').attr('x', cx - 3).attr('y', 24).attr('width', 6).attr('height', 8).attr('rx', 2).attr('fill', dash.colors[1]);
+      if (r.meeting_hours != null) {
+        const h = Math.max(1, (r.meeting_hours / maxH) * 22);
+        svg.append('rect').attr('x', cx - bw / 2).attr('y', 66 - h).attr('width', bw).attr('height', h).attr('rx', 2).attr('fill', dash.colors[2]).attr('fill-opacity', r.meeting_hours ? 0.85 : 0.2);
+      }
+    }
+    if (state.day) {
+      const sel = rows.find((r) => r.date === state.day);
+      if (sel) svg.append('rect').attr('x', x(parseDay(sel.date))).attr('y', 0).attr('width', bw).attr('height', height).attr('fill', 'none').attr('stroke', 'var(--cds-chart-reference)');
+    }
     const tip = document.createElement('div');
     tip.className = 'gd-tip';
     tip.hidden = true;
-    chartEl.appendChild(tip);
-    svg.append('g').selectAll('rect').data(pts).join('rect')
-      .attr('x', (r) => x(r.period)).attr('width', x.bandwidth()).attr('y', 0).attr('height', height - 24).attr('fill', 'transparent')
-      .on('mousemove', (event, r) => {
+    lane.appendChild(tip);
+    const pick = (event) => {
+      const t = x.invert(d3.pointer(event, svg.node())[0]);
+      const iso = d3.utcDay.floor(t).toISOString().slice(0, 10);
+      return rows.find((r) => r.date === iso);
+    };
+    svg.append('rect').attr('x', left).attr('y', 0).attr('width', width - left - 8).attr('height', height).attr('fill', 'transparent').style('cursor', 'pointer')
+      .on('mousemove', (event) => {
+        const r = pick(event);
+        if (!r) { tip.hidden = true; return; }
         tip.replaceChildren();
-        const d = document.createElement('div'); d.className = 'gd-tip-date'; d.textContent = `${r.period} (${r.from} – ${r.to})`; tip.appendChild(d);
-        const v = document.createElement('div'); v.textContent = `HRV median: ${fmt(r.hrv)} ms · days with data: ${r.days}`; tip.appendChild(v);
-        if (r.tags) { const t = document.createElement('div'); t.textContent = `Journal: ${r.tags}`; tip.appendChild(t); }
+        const add = (text, cls) => { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = text; tip.appendChild(d); };
+        add(czDay(r.date), 'gd-tip-date');
+        add(`Journal: ${r.tags || '—'}`);
+        const as = actBy.get(r.date) || [];
+        add(`Activities: ${as.length ? as.map((a) => `${a.type ?? 'activity'} ${a.start ?? ''} (${fmt(a.duration_min)} min)`).join(', ') : '—'}`);
+        add(r.meeting_hours == null ? 'Meetings: no calendar data' : `Meetings: ${r.meetings} (${fmt(r.meeting_hours, 1)} h)${r.last_meeting_end ? `, last until ${r.last_meeting_end}` : ''}`);
+        add(`HRV: ${fmt(r.hrv)} ms · sleep ${fmt(r.sleep_hours, 1)} h`);
         tip.hidden = false;
-        const px = (x(r.period) + x.bandwidth()) * (chartEl.clientWidth / width);
-        tip.style.left = `${Math.min(Math.max(0, px + 6), chartEl.clientWidth - tip.offsetWidth)}px`;
+        const px = x(parseDay(r.date)) * (lane.clientWidth / width);
+        tip.style.left = `${Math.min(Math.max(0, px + 10), lane.clientWidth - tip.offsetWidth)}px`;
         tip.style.top = '0px';
       })
-      .on('mouseleave', () => { tip.hidden = true; });
+      .on('mouseleave', () => { tip.hidden = true; })
+      .on('click', (event) => { const r = pick(event); if (r) window.GD.openDay(r.date); });
   };
 
-  const draw = () => {
-    const res = dash.data('periods');
-    body.replaceChildren();
-    if (res.status !== 'ok') {
-      chartEl.replaceChildren();
-      if (res.status === 'error') { const e = document.createElement('div'); e.className = 'gd-empty'; e.textContent = 'Failed to load'; chartEl.appendChild(e); }
-      else chartEl.classList.add('dash-skeleton');
-      return;
-    }
-    chartEl.classList.remove('dash-skeleton');
-    const rows = res.data.filter((r) => r.kind === kind).sort((a, b) => a.period.localeCompare(b.period));
-    drawChart(rows);
-    for (const r of [...rows].reverse()) {
-      const tr = document.createElement('tr');
-      tr.dataset.key = `${r.kind},${r.period}`;
-      tr.title = `${r.from} – ${r.to}`;
-      const cells = [r.period, fmt(r.hrv), fmt(r.sleep_score), fmt(r.sleep_hours, 1), fmt(r.resting_hr), fmt(r.body_battery), fmt(r.stress), fmt(r.steps), String(r.days), r.tags || ''];
-      cells.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i >= 1 && i <= 8) td.className = 'num'; tr.appendChild(td); });
-      body.appendChild(tr);
-    }
+  window.GD.drawBefore = () => {
+    before.replaceChildren();
+    const daily = dash.data('daily');
+    const base = dash.data('baseline');
+    const acts = dash.data('activities');
+    const cal = dash.data('calendar');
+    if (!state.day || daily.status !== 'ok' || base.status !== 'ok') return;
+    const by = new Map(daily.data.map((r) => [r.date, r]));
+    const baseBy = new Map(base.data.map((r) => [r.date, r]));
+    const day = by.get(state.day);
+    const prev = by.get(shift(state.day, -1));
+    const m = (k) => METRICS.find((x) => x.key === k);
+    const box = (title, items) => {
+      const div = document.createElement('div');
+      const h = document.createElement('h4'); h.textContent = title; div.appendChild(h);
+      const ul = document.createElement('ul');
+      for (const [text, cls] of items) { const li = document.createElement('li'); li.textContent = text; if (cls) li.className = cls; ul.appendChild(li); }
+      div.appendChild(ul);
+      before.appendChild(div);
+    };
+    const vsMedian = (row, k) => {
+      const mt = m(k);
+      const v = row?.[k];
+      const med = baseBy.get(row?.date)?.[k];
+      if (v == null) return [`${mt.label}: —`, ''];
+      const diff = med == null ? null : v - med;
+      const cls = diff == null || Math.abs(diff) < 1e-9 ? '' : (diff > 0) === (mt.good === 'high') ? 'is-good' : 'is-bad';
+      return [`${mt.label}: ${fmt(v, mt.decimals)}${mt.unit ? ' ' + mt.unit : ''}${med == null ? '' : ` (median ${fmt(med, mt.decimals)})`}`, cls];
+    };
+    const agenda = (date) => {
+      const as = acts.status === 'ok' ? acts.data.filter((a) => a.date === date) : [];
+      const cs = cal.status === 'ok' ? cal.data.filter((c) => c.date === date && ['1:1', 'internal', 'external'].includes(c.category)) : [];
+      const r = by.get(date);
+      const out = [];
+      out.push([`Activities: ${as.length ? as.map((a) => `${a.type ?? 'activity'} ${a.start ?? ''}, ${fmt(a.duration_min)} min`).join('; ') : 'none'}`, '']);
+      out.push([r?.meeting_hours == null ? 'Meetings: no calendar data' : `Meetings: ${r.meetings}, ${fmt(r.meeting_hours, 1)} h${r.last_meeting_end ? `, last until ${r.last_meeting_end}` : ''}${cs.length ? ` (${cs.map((c) => `${c.start} ${c.category}`).join(', ')})` : ''}`, '']);
+      out.push([`Journal: ${r?.tags || '—'}`, '']);
+      return out;
+    };
+    box(`Night before ${czDay(state.day)}`, [vsMedian(day, 'hrv'), vsMedian(day, 'sleep_score'), vsMedian(day, 'sleep_hours'), vsMedian(day, 'body_battery')]);
+    box(`Day before (${czDay(shift(state.day, -1))})`, [vsMedian(prev, 'steps'), vsMedian(prev, 'stress'), ...agenda(shift(state.day, -1))]);
+    box(`This day (${czDay(state.day)})`, [vsMedian(day, 'resting_hr'), vsMedian(day, 'stress'), ...agenda(state.day)]);
   };
-  dash.onData(draw);
+
+  dash.onData(() => { window.GD.drawLane(); });
 })();
 </script>
 
@@ -620,14 +766,15 @@ window.GD.lineChart = (el, metric, opts) => {
 (() => {
   const { fmt } = window.GD;
   const body = document.querySelector('#table-activities tbody');
-  dash.onData(() => {
+  window.GD.drawActivities = () => {
     const res = dash.data('activities');
     body.replaceChildren();
     if (res.status !== 'ok') return;
-    const last = res.data.length ? res.data[res.data.length - 1].date : null;
+    const daily = dash.data('daily');
+    const last = daily.status === 'ok' && daily.data.length ? daily.data[daily.data.length - 1].date : null;
     if (!last) return;
     const from = new Date(last + 'T00:00:00Z');
-    from.setUTCDate(from.getUTCDate() - 29);
+    from.setUTCDate(from.getUTCDate() - (window.GD.state.days - 1));
     const cut = from.toISOString().slice(0, 10);
     const rows = res.data.filter((a) => a.date >= cut).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
     for (const a of rows) {
@@ -636,8 +783,62 @@ window.GD.lineChart = (el, metric, opts) => {
       cells.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i >= 3) td.className = 'num'; tr.appendChild(td); });
       body.appendChild(tr);
     }
-  });
+  };
+  dash.onData(() => window.GD.drawActivities());
   const named = document.getElementById(location.hash.slice(1));
   if (named) setTimeout(() => named.scrollIntoView(), 300);
+})();
+</script>
+
+<script>
+// Period and grouping controls, period summary and tags.
+(() => {
+  const { METRICS, fmt, czDay, state } = window.GD;
+  const range = document.getElementById('ctl-range');
+  const body = document.querySelector('#table-summary tbody');
+  const tagsEl = document.getElementById('summary-tags');
+  const note = document.getElementById('hrv-note');
+  const drawSummary = () => {
+    const res = dash.data('summary');
+    body.replaceChildren();
+    if (res.status !== 'ok') return;
+    const rows = res.data.filter((r) => r.window === state.days);
+    const first = rows[0];
+    range.textContent = first && first.from ? `${czDay(first.from)} – ${czDay(first.to)}` : '';
+    for (const m of METRICS) {
+      const r = rows.find((x) => x.metric === m.key);
+      if (!r) continue;
+      const tr = document.createElement('tr');
+      tr.dataset.key = `${r.window},${r.metric}`;
+      const cells = [
+        [m.unit ? `${m.label} (${m.unit})` : m.label, 'is-name'],
+        [fmt(r.median, m.decimals), 'num'], [fmt(r.previous, m.decimals), 'num'],
+        [r.diff == null ? '—' : (r.diff > 0 ? '+' : '') + fmt(r.diff, m.decimals), 'num' + (r.diff ? ((r.diff > 0) === (m.good === 'high') ? ' is-good' : ' is-bad') : '')],
+        [fmt(r.min, m.decimals), 'num'], [fmt(r.max, m.decimals), 'num'], [String(r.days), 'num'],
+      ];
+      for (const [v, cls] of cells) { const td = document.createElement('td'); td.textContent = v; td.className = cls; tr.appendChild(td); }
+      body.appendChild(tr);
+    }
+    const tags = dash.data('tagsummary');
+    const list = tags.status === 'ok' ? tags.data.filter((t) => t.window === state.days).sort((a, b) => b.count - a.count) : [];
+    tagsEl.textContent = list.length ? `Journal in the period: ${list.map((t) => `${t.tag} ${t.count}×`).join(', ')}.` : 'Journal in the period: no tags.';
+  };
+  const setNote = () => {
+    note.textContent = state.agg === 'day'
+      ? 'Dots: the night\'s value. Thick line: 7-day average (trend). Grey dashed: median of the previous 28 days. Red dot at the top = a journal tag. A gap = a night without data, not zero. Click to open the day.'
+      : `Median per ${state.agg === 'week' ? 'week (Monday–Sunday)' : 'calendar month'}; periods at the edges are often incomplete, the tooltip shows days with data. Red dot at the top = a journal tag.`;
+  };
+  const redraw = () => { setNote(); drawSummary(); window.GD.drawDaily(); window.GD.drawLane(); window.GD.drawActivities(); };
+  const bind = (id, attr, apply) => {
+    const buttons = document.querySelectorAll(`#${id} button`);
+    buttons.forEach((b) => b.addEventListener('click', () => {
+      apply(b.dataset[attr]);
+      buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+      redraw();
+    }));
+  };
+  bind('ctl-days', 'days', (v) => { state.days = Number(v); });
+  bind('ctl-agg', 'agg', (v) => { state.agg = v; });
+  dash.onData(() => { setNote(); drawSummary(); });
 })();
 </script>

@@ -61,7 +61,11 @@ Tags from `journal/` (party, alcohol, illness…) are listed under the charts an
 
 ## Artifact dashboard (optional)
 
-If you turned on the optional private Claude artifact, it shows the same metrics with hover values and two extra views:
+If you turned on the optional private Claude artifact, it shows the same metrics with hover values and these extra views:
 
-- **Weeks and months**: the median of each metric per ISO week or calendar month, how many days had data and how often each journal tag appeared. Bars show HRV.
-- **Course of the day**: heart rate (about every 2 minutes) and Body Battery (every 15 minutes) through a chosen day of the last 60 days, with activities as grey bands. Useful for "what happened on Tuesday afternoon".
+- **Period and grouping**: the bar at the top switches the whole page between 7, 14, 30, 90 days and a year, and between days, ISO weeks and calendar months (medians; the tooltip shows how many days had data, periods at the edges are often incomplete).
+- **Period summary**: for each metric the median of the chosen period against the same-length period before it, the change (green better, red worse), the lowest and highest day, days with data, and how often each journal tag appeared.
+- **Trend**: by day, the dots are the daily values and the thick line is the 7-day average (needs at least 4 days with data); the dashed line is the 28-day median.
+- **What happened**: a strip under HRV with journal tags, activities and hours in meetings (bar height) per day. Click a day to open it.
+- **Course of the day**: heart rate (about every 2 minutes) and Body Battery (every 15 minutes) through a chosen day of the last 60 days, activities as grey bands and meetings as a coloured strip at the bottom by category. Useful for "did my heart rate go up during that meeting".
+- **What came before**: next to the day, the night against the 28-day median, and the day before and the day itself: steps, stress, activities, meetings and journal tags.

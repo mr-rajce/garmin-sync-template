@@ -42,15 +42,15 @@ Garmin Personal API ──(GitHub Action every morning, last 7 days)──► da
 | `body_battery` | Body Battery with sleep/activity events | 31 |
 | `weight` | weight (only days with a measurement) | 31 |
 | `hydration` | water intake (only if you log it) | 31 |
-| `food_logs` | food logged in Garmin Connect (only days with entries) | per day |
 | `heart_rate` | heart rate through the day (`heartRateValues`, about every 2 min; only days with values; Garmin returned roughly the last 5 months) | per day |
 | `body_battery_intraday` | Body Battery every 15 minutes (`chunks=96`) | 31 |
 | `activities/<year>/<day>-<id>.json` | activity summaries (not .FIT files; may include GPS start/end coordinates) | paged |
+| `calendar` | optional, not from Garmin: meeting times and categories per day from Google Calendar, written by a routine (`python -m garmin_sync.calendar`); never titles or attendees | — |
 
 - **A missing file means Garmin returned nothing for that day** (watch not worn or not synced). It is not zero. Nights without the watch are skipped.
 - **Why 7 days every morning:** watches sync late and Garmin recalculates past days. A file is rewritten only when its content changes, so each daily commit shows what actually changed.
 - **Rate limit:** Garmin allows about 100 requests per minute. The sync pauses 0.65 s between requests and, on HTTP 429, waits as long as Garmin says.
-- **Calories eaten:** Garmin only has them if you log food in Garmin Connect. The `food_logs` shape with real entries has not been verified yet; if the sync reports an unknown shape, the data is not saved wrongly, it is reported.
+- **Calories eaten:** not downloaded. Garmin's food log endpoint has returned HTTP 500 since November 2026, so the dataset was removed.
 
 ## Journal
 
@@ -70,7 +70,7 @@ After every sync, `garmin_sync/check.py` compares yesterday and the day before w
 
 ## Optional: dashboard in a Claude artifact
 
-The repo dashboard keeps your data on GitHub only. If you want an interactive version (hover values, zoom, journal tags on the charts, the course of any day), you can have Claude build a **private** Claude artifact from `artifact/index.html`. It needs a copy of your data on claude.ai, so it is **off by default**: turn it on by adding the exception in `CLAUDE.md` (section Optional: artifact) yourself, then ask Claude "build my Garmin dashboard artifact". The exact build and refresh steps Claude follows are in `CLAUDE.md`; the page also shows weekly and monthly medians and the course of any of the last 60 days. Refreshing is on request: "refresh my dashboard artifact". `python -m garmin_sync.export --out <folder>` writes only daily summaries, the course of the day and journal tags (never raw files, journal text, GPS or activity names).
+The repo dashboard keeps your data on GitHub only. If you want an interactive version (hover values, zoom, journal tags on the charts, the course of any day), you can have Claude build a **private** Claude artifact from `artifact/index.html`. It needs a copy of your data on claude.ai, so it is **off by default**: turn it on by adding the exception in `CLAUDE.md` (section Optional: artifact) yourself, then ask Claude "build my Garmin dashboard artifact". The exact build and refresh steps Claude follows are in `CLAUDE.md`; the page lets you switch the period (7 days to a year) and grouping (day, week, month), shows a period summary, a 7-day trend, what happened on each day (journal, activities, meetings) and the course of any of the last 60 days with what came before it. Refreshing is on request: "refresh my dashboard artifact". `python -m garmin_sync.export --out <folder>` writes only daily summaries, the course of the day, journal tags and, if you use the calendar, meeting times and categories (never raw files, journal text, GPS, activity names or meeting titles and attendees).
 
 ## Agents (optional)
 
@@ -83,7 +83,7 @@ For a weekly summary, create a routine in claude.ai → **Routines → New routi
 Optional, described in `CLAUDE.md`:
 
 - **HRV analysis:** add "Include the HRV analysis." to the prompt. It compares your best and worst nights of the last 28 and what came before them, and suggests at most 2 things to try, based only on your data.
-- **Calendar:** add only the **Google Calendar** connector to the routine (and no others: the fewer connectors, the fewer ways for health data to leave). The summary then includes daily meeting load, never meeting titles or attendees.
+- **Calendar:** add only the **Google Calendar** connector to the routine (and no others: the fewer connectors, the fewer ways for health data to leave). The routine then saves each meeting as time and category only (`1:1`, `internal`, `external`, `own`, `focus`, …) into `data/calendar/` through `python -m garmin_sync.calendar`, which computes the categories and rejects any other field, so titles and attendees never reach the repo. The summary and the artifact then show meeting load. Add to the prompt: "First fill the calendar for the last 7 days and today as described in CLAUDE.md, section Optional: calendar."
 
 Note: the routine form may swallow text in angle brackets such as `<year>`, so the prompt above uses YEAR-WWEEK instead.
 

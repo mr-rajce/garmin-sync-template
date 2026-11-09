@@ -1,7 +1,8 @@
 """Garmin Personal API datasets: where they come from and how to get per-day items.
 
-Response shapes verified against the real API, except `hydration` and
-`food_logs` with entries (no sample with logged water or food yet).
+Response shapes verified against the real API, except `hydration` (no sample
+with logged water yet). Food logs are not downloaded: the endpoint has returned
+HTTP 500 since November 2026.
 Intraday heart rate came back only for roughly the last 5 months.
 """
 
@@ -11,7 +12,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-FOOD_LOGS = "food_logs"
 ACTIVITIES = "activities"
 ACTIVITY_PAGE_SIZE = 100
 MAX_ACTIVITY_PAGES = 50
@@ -20,9 +20,9 @@ MAX_ACTIVITY_PAGES = 50
 def has_entries(raw: Any) -> bool:
     """True when a per-day response has at least one entry.
 
-    Garmin returns an object with metadata even for an empty day (for food
-    mealDate, dayStartTime…); the entries live in lists (loggedFoodsWithServingSizes,
-    heartRateValues for heart rate). A day without a non-empty list is not saved.
+    Garmin returns an object with metadata even for an empty day (calendarDate,
+    restingHeartRate…); the entries live in lists (heartRateValues for heart rate).
+    A day without a non-empty list is not saved.
     """
     if isinstance(raw, list):
         return bool(raw)
@@ -84,6 +84,5 @@ class DayDataset:
 
 
 DAY_DATASETS: tuple[DayDataset, ...] = (
-    DayDataset(FOOD_LOGS, "get_daily_food_logs"),
     DayDataset("heart_rate", "get_daily_heart_rate"),
 )

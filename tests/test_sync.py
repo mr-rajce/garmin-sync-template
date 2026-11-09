@@ -59,13 +59,6 @@ class FakeClient:
         self._maybe_fail("hydration")
         return {"unexpected": [1]}
 
-    def get_daily_food_logs(self, day):
-        self._maybe_fail("food_logs")
-        # Real API shape: even an empty day has metadata.
-        meta = {"mealDate": day.isoformat(), "dayStartTime": "07:00:00", "mealDetails": []}
-        foods = [{"foodName": "porridge"}] if day == START else []
-        return {**meta, "loggedFoodsWithServingSizes": foods}
-
     def get_daily_heart_rate(self, day):
         self._maybe_fail("heart_rate")
         # Real API shape; a day without the watch has heartRateValues null.
@@ -85,9 +78,9 @@ def test_sync_all_writes_one_file_per_day(tmp_path: Path):
     assert (tmp_path / "body_battery/2030/2030-10-21.json").exists()
     assert report.changed["sleep"] == 2
     assert report.changed["weight"] == 0
-    # Food log only for the day that has entries.
-    assert report.changed["food_logs"] == 1
-    assert not (tmp_path / "food_logs/2030/2030-10-21.json").exists()
+    # Food logs are not downloaded (the endpoint returned HTTP 500 and nothing used them).
+    assert "food_logs" not in report.changed
+    assert "get_daily_food_logs" not in {d.method for d in sync.datasets.DAY_DATASETS}
     # Intraday heart rate only for the day with values, 15-minute Body Battery separately.
     assert report.changed["heart_rate"] == 1
     assert not (tmp_path / "heart_rate/2030/2030-10-21.json").exists()
@@ -115,13 +108,13 @@ def test_one_failing_dataset_does_not_stop_others(tmp_path: Path):
 
 def test_one_failing_dataset_is_a_warning_not_a_failure(tmp_path: Path):
     class Http500(FakeClient):
-        def get_daily_food_logs(self, day):
-            raise RuntimeError("GET .../food/logs returned HTTP 500: {}")
+        def get_daily_heart_rate(self, day):
+            raise RuntimeError("GET .../heart_rate returned HTTP 500: {}")
 
     report = sync.sync_all(Http500(), START, END, tmp_path)
-    assert report.failed == {"food_logs"}
+    assert report.failed == {"heart_rate"}
     assert report.exit_code() == 0
-    assert f"- ⚠️ food_logs {START}: GET .../food/logs returned HTTP 500: {{}}" in report.lines()
+    assert f"- ⚠️ heart_rate {START}: GET .../heart_rate returned HTTP 500: {{}}" in report.lines()
     assert not any("❌" in line for line in report.lines())
     assert (tmp_path / f"sleep/{START.year}/{START}.json").exists()
 
@@ -228,7 +221,7 @@ def test_retrying_client_waits_and_retries():
     class Flaky:
         calls = 0
 
-        def get_daily_food_logs(self, day):
+        def get_daily_heart_rate(self, day):
             self.calls += 1
             if self.calls < 3:
                 raise RateLimited()
@@ -236,7 +229,7 @@ def test_retrying_client_waits_and_retries():
 
     waits: list[float] = []
     client = sync.RetryingClient(Flaky(), sleep=waits.append)
-    assert client.get_daily_food_logs("2030-10-20") == {"ok": "2030-10-20"}
+    assert client.get_daily_heart_rate("2030-10-20") == {"ok": "2030-10-20"}
     assert waits == [19.0, 19.0]
 
 
